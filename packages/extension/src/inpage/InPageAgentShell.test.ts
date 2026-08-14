@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MultiPageAgent } from '../agent/MultiPageAgent'
+import type { ExtConfig } from '../agent/loadAgentConfig'
 import { InPageAgentShell } from './InPageAgentShell'
-import type { ExtConfig } from './loadAgentConfig'
 
 class FakeAgent extends EventTarget {
 	dispose = vi.fn(() => this.dispatchEvent(new Event('dispose')))
@@ -62,5 +62,63 @@ describe('InPageAgentShell', () => {
 		expect(panel.dispose).toHaveBeenCalledOnce()
 		expect(agent.dispose).toHaveBeenCalledOnce()
 		expect(document.querySelector('#page-agent-inpage-launcher')).toBeNull()
+	})
+
+	it('cleans up a failed Panel creation and retries with a fresh Agent', async () => {
+		const firstAgent = new FakeAgent()
+		const secondAgent = new FakeAgent()
+		const removeListener = vi.spyOn(firstAgent, 'removeEventListener')
+		const panel = new FakePanel()
+		const createAgent = vi
+			.fn()
+			.mockReturnValueOnce(firstAgent as unknown as MultiPageAgent)
+			.mockReturnValueOnce(secondAgent as unknown as MultiPageAgent)
+		const createPanel = vi
+			.fn()
+			.mockImplementationOnce(() => {
+				throw new Error('Panel construction failed')
+			})
+			.mockReturnValueOnce(panel as never)
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent,
+			createPanel,
+		})
+
+		await expect(shell.toggle()).rejects.toThrow('Panel construction failed')
+		expect(firstAgent.dispose).toHaveBeenCalledOnce()
+		expect(removeListener).toHaveBeenCalledWith('dispose', expect.any(Function))
+
+		await expect(shell.toggle()).resolves.toBeUndefined()
+		expect(createAgent).toHaveBeenCalledTimes(2)
+		expect(panel.show).toHaveBeenCalledOnce()
+	})
+
+	it('cleans up a Panel when showing it fails and remains retryable', async () => {
+		const firstAgent = new FakeAgent()
+		const secondAgent = new FakeAgent()
+		const failingPanel = new FakePanel()
+		failingPanel.show.mockImplementationOnce(() => {
+			throw new Error('Panel display failed')
+		})
+		const nextPanel = new FakePanel()
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent: vi
+				.fn()
+				.mockReturnValueOnce(firstAgent as unknown as MultiPageAgent)
+				.mockReturnValueOnce(secondAgent as unknown as MultiPageAgent),
+			createPanel: vi
+				.fn()
+				.mockReturnValueOnce(failingPanel as never)
+				.mockReturnValueOnce(nextPanel as never),
+		})
+
+		await expect(shell.toggle()).rejects.toThrow('Panel display failed')
+		expect(failingPanel.dispose).toHaveBeenCalledOnce()
+		expect(firstAgent.dispose).toHaveBeenCalledOnce()
+
+		await expect(shell.toggle()).resolves.toBeUndefined()
+		expect(nextPanel.show).toHaveBeenCalledOnce()
 	})
 })

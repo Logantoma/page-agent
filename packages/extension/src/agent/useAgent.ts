@@ -4,16 +4,15 @@
 import type { AgentActivity, AgentStatus, ExecutionResult, HistoricalEvent } from '@page-agent/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { MultiPageAgent } from './MultiPageAgent'
 import {
 	type AdvancedConfig,
 	type ExtConfig,
 	type LanguagePreference,
 	loadAgentConfig,
-} from '@/inpage/loadAgentConfig'
+} from './loadAgentConfig'
 
-import { MultiPageAgent } from './MultiPageAgent'
-
-export type { AdvancedConfig, ExtConfig, LanguagePreference } from '@/inpage/loadAgentConfig'
+export type { AdvancedConfig, ExtConfig, LanguagePreference } from './loadAgentConfig'
 
 export interface UseAgentResult {
 	status: AgentStatus

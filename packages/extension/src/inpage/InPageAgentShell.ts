@@ -1,9 +1,9 @@
 import { Panel } from '@page-agent/ui'
 
 import { MultiPageAgent } from '../agent/MultiPageAgent'
+import type { ExtConfig } from '../agent/loadAgentConfig'
+import { loadAgentConfig } from '../agent/loadAgentConfig'
 import { InPageLauncher } from './InPageLauncher'
-import type { ExtConfig } from './loadAgentConfig'
-import { loadAgentConfig } from './loadAgentConfig'
 
 type AgentFactory = (config: ExtConfig) => MultiPageAgent
 type PanelFactory = (agent: MultiPageAgent, config: ExtConfig) => Panel
@@ -39,7 +39,9 @@ export class InPageAgentShell {
 			dependencies.createPanel ??
 			((agent, config) => new Panel(agent, { language: config.language }))
 		const createLauncher = dependencies.createLauncher ?? ((options) => new InPageLauncher(options))
-		this.#launcher = createLauncher({ onClick: () => void this.toggle() })
+		this.#launcher = createLauncher({
+			onClick: () => void this.toggle().catch((error) => console.error(error)),
+		})
 	}
 
 	async toggle(): Promise<void> {
@@ -76,20 +78,28 @@ export class InPageAgentShell {
 		const config = await this.#loadConfig()
 		if (this.#disposed) return
 
-		const agent = this.#createAgent(config)
-		agent.addEventListener('dispose', this.#onAgentDispose)
-		const panel = this.#createPanel(agent, config)
-		if (this.#disposed) {
-			panel.dispose()
-			agent.removeEventListener('dispose', this.#onAgentDispose)
-			agent.dispose()
-			return
-		}
+		let agent: MultiPageAgent | null = null
+		let panel: Panel | null = null
+		let initialized = false
 
-		this.#agent = agent
-		this.#panel = panel
-		this.#opened = true
-		panel.show()
+		try {
+			agent = this.#createAgent(config)
+			agent.addEventListener('dispose', this.#onAgentDispose)
+			panel = this.#createPanel(agent, config)
+			panel.show()
+			if (this.#disposed) return
+
+			this.#agent = agent
+			this.#panel = panel
+			this.#opened = true
+			initialized = true
+		} finally {
+			if (!initialized) {
+				panel?.dispose()
+				agent?.removeEventListener('dispose', this.#onAgentDispose)
+				agent?.dispose()
+			}
+		}
 	}
 }
 
