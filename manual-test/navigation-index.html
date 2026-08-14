@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Navigation Probe: DOM Switch</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 48px;
+				max-width: 640px;
+			}
+			section {
+				border: 1px solid #cbd5e1;
+				padding: 24px;
+			}
+			label,
+			select,
+			button {
+				display: block;
+				margin-top: 16px;
+			}
+			#step2 {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>DOM Switch Navigation Probe</h1>
+		<section id="step1">
+			<h2>Question: choose an option</h2>
+			<label for="answer">Answer</label>
+			<select id="answer" name="answer">
+				<option value="a">Option A</option>
+				<option value="b">Option B</option>
+			</select>
+			<button id="next" type="button">Next</button>
+		</section>
+
+		<section id="step2" aria-live="polite">
+			<h2>Step complete</h2>
+			<p>Verification code: BLUE-742</p>
+		</section>
+
+		<section id="full-navigation" aria-live="polite" style="display: none">
+			<h2>Full page navigation</h2>
+			<p>Use Next to continue to the second document.</p>
+			<a id="next-page" href="navigation-page2.html">Next</a>
+		</section>
+
+		<script>
+			const fullNavigation = new URLSearchParams(location.search).get('probe') === 'full'
+			if (fullNavigation) {
+				document.querySelector('#step1').style.display = 'none'
+				document.querySelector('#full-navigation').style.display = 'block'
+			}
+
+			document.querySelector('#next').addEventListener('click', () => {
+				const answer = document.querySelector('#answer')
+				if (answer.value !== 'b') return
+				document.querySelector('#step1').style.display = 'none'
+				document.querySelector('#step2').style.display = 'block'
+			})
+		</script>
+	</body>
+</html>

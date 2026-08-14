@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Navigation Probe: SPA Route</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 48px;
+				max-width: 640px;
+			}
+			section {
+				border: 1px solid #cbd5e1;
+				padding: 24px;
+			}
+			label,
+			select,
+			button {
+				display: block;
+				margin-top: 16px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>SPA History Navigation Probe</h1>
+		<section id="app" aria-live="polite"></section>
+
+		<script>
+			const app = document.querySelector('#app')
+
+			function render() {
+				if (location.pathname === '/step2') {
+					app.innerHTML = '<h2>Step complete</h2><p>Verification code: PURPLE-581</p>'
+					return
+				}
+
+				app.innerHTML = `
+					<h2>Question: choose an option</h2>
+					<label for="answer">Answer</label>
+					<select id="answer" name="answer">
+						<option value="a">Option A</option>
+						<option value="b">Option B</option>
+					</select>
+					<button id="next" type="button">Next</button>
+				`
+				document.querySelector('#next').addEventListener('click', () => {
+					if (document.querySelector('#answer').value !== 'b') return
+					history.pushState({}, '', '/step2')
+					render()
+				})
+			}
+
+			window.addEventListener('popstate', render)
+			render()
+		</script>
+	</body>
+</html>
