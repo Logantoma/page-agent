@@ -1,4 +1,5 @@
 import { initPageController } from '@/agent/RemotePageController.content'
+import { InPageAgentShell } from '@/inpage/InPageAgentShell'
 
 // import { DEMO_CONFIG } from '@/agent/constants'
 
@@ -8,9 +9,11 @@ export default defineContentScript({
 	matches: ['<all_urls>'],
 	runAt: 'document_end',
 
-	main() {
+	main(ctx) {
 		console.debug(`${DEBUG_PREFIX} Loaded on ${window.location.href}`)
 		initPageController()
+		const inPageShell = new InPageAgentShell()
+		ctx.onInvalidated(() => inPageShell.dispose())
 
 		// if auth token matches, expose agent to page
 		chrome.storage.local.get('PageAgentExtUserAuthToken').then((result) => {

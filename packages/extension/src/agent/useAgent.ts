@@ -1,33 +1,19 @@
 /**
  * React hook for using AgentController
  */
-import type {
-	AgentActivity,
-	AgentStatus,
-	ExecutionResult,
-	HistoricalEvent,
-	SupportedLanguage,
-} from '@page-agent/core'
-import type { LLMConfig } from '@page-agent/llms'
+import type { AgentActivity, AgentStatus, ExecutionResult, HistoricalEvent } from '@page-agent/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import {
+	type AdvancedConfig,
+	type ExtConfig,
+	type LanguagePreference,
+	loadAgentConfig,
+} from '@/inpage/loadAgentConfig'
+
 import { MultiPageAgent } from './MultiPageAgent'
-import { DEMO_CONFIG, migrateLegacyEndpoint } from './constants'
 
-/** Language preference: undefined means follow system */
-export type LanguagePreference = SupportedLanguage | undefined
-
-export interface AdvancedConfig {
-	maxSteps?: number
-	systemInstruction?: string
-	experimentalLlmsTxt?: boolean
-	experimentalIncludeAllTabs?: boolean
-	disableNamedToolChoice?: boolean
-}
-
-export interface ExtConfig extends LLMConfig, AdvancedConfig {
-	language?: LanguagePreference
-}
+export type { AdvancedConfig, ExtConfig, LanguagePreference } from '@/inpage/loadAgentConfig'
 
 export interface UseAgentResult {
 	status: AgentStatus
@@ -49,22 +35,7 @@ export function useAgent(): UseAgentResult {
 	const [config, setConfig] = useState<ExtConfig | null>(null)
 
 	useEffect(() => {
-		chrome.storage.local.get(['llmConfig', 'language', 'advancedConfig']).then((result) => {
-			let llmConfig = (result.llmConfig as LLMConfig) ?? DEMO_CONFIG
-			const language = (result.language as SupportedLanguage) || undefined
-			const advancedConfig = (result.advancedConfig as AdvancedConfig) ?? {}
-
-			// Auto-migrate legacy testing endpoints
-			const migrated = migrateLegacyEndpoint(llmConfig)
-			if (migrated !== llmConfig) {
-				llmConfig = migrated
-				chrome.storage.local.set({ llmConfig: migrated })
-			} else if (!result.llmConfig) {
-				chrome.storage.local.set({ llmConfig: DEMO_CONFIG })
-			}
-
-			setConfig({ ...llmConfig, ...advancedConfig, language })
-		})
+		void loadAgentConfig().then(setConfig)
 	}, [])
 
 	useEffect(() => {
