@@ -8,6 +8,8 @@ describe('normalizeModelName', () => {
 		['gpt_5_2', 'gpt52'],
 		['GPT-52-2026-01-01', 'gpt-52-2026-01-01'],
 		['openai/gpt-5.2-chat', 'gpt-52-chat'],
+		['deepseek-ai/DeepSeek-V3.2', 'deepseek-v32'],
+		['Pro/deepseek-ai/DeepSeek-V3.2', 'deepseek-v32'],
 		['claude_sonnet4_5', 'claudesonnet45'],
 	])('%s -> %s', (input, expected) => {
 		expect(normalizeModelName(input)).toBe(expected)

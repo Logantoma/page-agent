@@ -213,9 +213,10 @@ export function modelPatch(body: Record<string, any>, baseURL?: string) {
 export function normalizeModelName(modelName: string): string {
 	let normalizedName = modelName.toLowerCase()
 
-	// remove prefix before '/'
-	if (normalizedName.includes('/')) {
-		normalizedName = normalizedName.split('/')[1]
+	// Keep the model ID after any provider or tier prefixes.
+	const segments = normalizedName.split('/').filter(Boolean)
+	if (segments.length > 0) {
+		normalizedName = segments.at(-1)!
 	}
 
 	// remove '_'
