@@ -17,6 +17,15 @@
 				background: white;
 				color: #111827;
 			}
+			#diagnostics {
+				background: #f1f5f9;
+				border: 1px solid #cbd5e1;
+				margin-top: 16px;
+				max-height: 280px;
+				overflow: auto;
+				padding: 12px;
+				white-space: pre-wrap;
+			}
 			label,
 			select,
 			button {
@@ -35,16 +44,54 @@
 			</select>
 			<button id="next" type="button">Next</button>
 			<p id="result">Waiting</p>
+			<button id="enter-fullscreen" type="button">Start controlled session</button>
+			<button id="refresh-diagnostics" type="button">Refresh diagnostics</button>
+			<pre id="diagnostics"></pre>
 		</div>
-		<button id="enter-fullscreen" type="button">Enter Fullscreen</button>
 
 		<script>
-			document.querySelector('#enter-fullscreen').addEventListener('click', () => {
-				document.querySelector('#fullscreen-root').requestFullscreen()
+			const fullscreenRoot = document.querySelector('#fullscreen-root')
+			const diagnostics = document.querySelector('#diagnostics')
+
+			function collectDiagnostics() {
+				const launcher = document.querySelector('#page-agent-inpage-launcher')
+				const fullscreen = document.fullscreenElement
+				const rect = launcher?.getBoundingClientRect()
+				const result = {
+					fullscreenElement: fullscreen?.id || fullscreen?.tagName || null,
+					launcherExists: Boolean(launcher),
+					launcherConnected: launcher?.isConnected ?? false,
+					launcherParent: launcher?.parentElement?.id || launcher?.parentElement?.tagName || null,
+					fullscreenContainsLauncher: fullscreen ? fullscreen.contains(launcher) : false,
+					display: launcher ? getComputedStyle(launcher).display : null,
+					visibility: launcher ? getComputedStyle(launcher).visibility : null,
+					opacity: launcher ? getComputedStyle(launcher).opacity : null,
+					position: launcher ? getComputedStyle(launcher).position : null,
+					zIndex: launcher ? getComputedStyle(launcher).zIndex : null,
+					rect: rect ? rect.toJSON() : null,
+					hitTarget:
+						rect && rect.width > 0 && rect.height > 0
+							? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+									?.id || null
+							: null,
+				}
+
+				diagnostics.textContent = JSON.stringify(result, null, 2)
+			}
+
+			document.querySelector('#enter-fullscreen').addEventListener('click', async () => {
+				await fullscreenRoot.requestFullscreen()
 			})
 			document.querySelector('#next').addEventListener('click', () => {
 				document.querySelector('#result').textContent = 'Verification code: GOLD-428'
 			})
+			document.addEventListener('fullscreenchange', () => {
+				requestAnimationFrame(() => {
+					requestAnimationFrame(collectDiagnostics)
+				})
+			})
+			document.querySelector('#refresh-diagnostics').addEventListener('click', collectDiagnostics)
+			collectDiagnostics()
 		</script>
 	</body>
 </html>
