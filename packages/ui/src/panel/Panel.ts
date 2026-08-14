@@ -57,6 +57,11 @@ export class Panel {
 		return this.#wrapper
 	}
 
+	mount(target: HTMLElement = document.body): void {
+		if (this.#wrapper.parentElement === target) return
+		target.appendChild(this.#wrapper)
+	}
+
 	/**
 	 * Create a Panel bound to an agent
 	 * @param agent - Agent instance that implements PanelAgentAdapter
@@ -72,6 +77,7 @@ export class Panel {
 
 		// Create UI elements
 		this.#wrapper = this.#createWrapper()
+		this.mount()
 		this.#indicator = this.#wrapper.querySelector(`.${styles.indicator}`)!
 		this.#statusText = this.#wrapper.querySelector(`.${styles.statusText}`)!
 		this.#historySection = this.#wrapper.querySelector(`.${styles.historySection}`)!
@@ -431,7 +437,6 @@ export class Panel {
 			</div>
 		`
 
-		document.body.appendChild(wrapper)
 		return wrapper
 	}
 

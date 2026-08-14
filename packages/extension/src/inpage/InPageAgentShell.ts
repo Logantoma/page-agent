@@ -26,6 +26,7 @@ export class InPageAgentShell {
 	#loadConfig: typeof loadAgentConfig
 	#createAgent: AgentFactory
 	#createPanel: PanelFactory
+	#onFullscreenChange = () => this.#syncMountTarget()
 	#onAgentDispose = () => {
 		this.#panel = null
 		this.#agent = null
@@ -42,6 +43,8 @@ export class InPageAgentShell {
 		this.#launcher = createLauncher({
 			onClick: () => void this.toggle().catch((error) => console.error(error)),
 		})
+		document.addEventListener('fullscreenchange', this.#onFullscreenChange)
+		this.#syncMountTarget()
 	}
 
 	async toggle(): Promise<void> {
@@ -71,6 +74,7 @@ export class InPageAgentShell {
 		this.#agent?.dispose()
 		this.#panel = null
 		this.#agent = null
+		document.removeEventListener('fullscreenchange', this.#onFullscreenChange)
 		this.#launcher.dispose()
 	}
 
@@ -86,6 +90,7 @@ export class InPageAgentShell {
 			agent = this.#createAgent(config)
 			agent.addEventListener('dispose', this.#onAgentDispose)
 			panel = this.#createPanel(agent, config)
+			panel.mount(this.#resolveMountTarget())
 			panel.show()
 			if (this.#disposed) return
 
@@ -100,6 +105,18 @@ export class InPageAgentShell {
 				agent?.dispose()
 			}
 		}
+	}
+
+	#resolveMountTarget(): HTMLElement {
+		return document.fullscreenElement instanceof HTMLElement
+			? document.fullscreenElement
+			: document.body
+	}
+
+	#syncMountTarget(): void {
+		const target = this.#resolveMountTarget()
+		this.#launcher.mount(target)
+		this.#panel?.mount(target)
 	}
 }
 

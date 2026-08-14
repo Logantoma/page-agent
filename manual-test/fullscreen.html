@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Fullscreen Probe</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 48px;
+			}
+			#fullscreen-root {
+				border: 1px solid #cbd5e1;
+				padding: 24px;
+			}
+			#fullscreen-root:fullscreen {
+				background: white;
+				color: #111827;
+			}
+			label,
+			select,
+			button {
+				display: block;
+				margin-top: 16px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="fullscreen-root">
+			<h1>Fullscreen Probe</h1>
+			<label for="answer">Answer</label>
+			<select id="answer">
+				<option>Option A</option>
+				<option>Option B</option>
+			</select>
+			<button id="next" type="button">Next</button>
+			<p id="result">Waiting</p>
+		</div>
+		<button id="enter-fullscreen" type="button">Enter Fullscreen</button>
+
+		<script>
+			document.querySelector('#enter-fullscreen').addEventListener('click', () => {
+				document.querySelector('#fullscreen-root').requestFullscreen()
+			})
+			document.querySelector('#next').addEventListener('click', () => {
+				document.querySelector('#result').textContent = 'Verification code: GOLD-428'
+			})
+		</script>
+	</body>
+</html>

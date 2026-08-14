@@ -10,6 +10,7 @@ class FakeAgent extends EventTarget {
 }
 
 class FakePanel {
+	mount = vi.fn()
 	show = vi.fn()
 	hide = vi.fn()
 	dispose = vi.fn()
@@ -18,7 +19,13 @@ class FakePanel {
 describe('InPageAgentShell', () => {
 	afterEach(() => {
 		document.body.replaceChildren()
+		Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
 	})
+
+	function setFullscreenElement(element: HTMLElement | null): void {
+		Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: element })
+		document.dispatchEvent(new Event('fullscreenchange'))
+	}
 
 	it('lazy-creates one Agent and toggles its existing Panel', async () => {
 		const agent = new FakeAgent()
@@ -120,5 +127,64 @@ describe('InPageAgentShell', () => {
 
 		await expect(shell.toggle()).resolves.toBeUndefined()
 		expect(nextPanel.show).toHaveBeenCalledOnce()
+	})
+
+	it('reparents the launcher and existing Panel when fullscreen changes', async () => {
+		const agent = new FakeAgent()
+		const panel = new FakePanel()
+		const createAgent = vi.fn(() => agent as unknown as MultiPageAgent)
+		const createPanel = vi.fn(() => panel as never)
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent,
+			createPanel,
+		})
+		const fullscreenRoot = document.createElement('div')
+		document.body.appendChild(fullscreenRoot)
+
+		expect(document.querySelector('#page-agent-inpage-launcher')?.parentElement).toBe(document.body)
+		await shell.toggle()
+		expect(panel.mount).toHaveBeenLastCalledWith(document.body)
+
+		setFullscreenElement(fullscreenRoot)
+		const launcher = document.querySelector('#page-agent-inpage-launcher')!
+		expect(launcher.parentElement).toBe(fullscreenRoot)
+		expect(launcher.getAttribute('data-browser-use-ignore')).toBe('true')
+		expect(launcher.getAttribute('data-page-agent-ignore')).toBe('true')
+		expect(panel.mount).toHaveBeenLastCalledWith(fullscreenRoot)
+
+		setFullscreenElement(null)
+		expect(document.querySelector('#page-agent-inpage-launcher')?.parentElement).toBe(document.body)
+		expect(panel.mount).toHaveBeenLastCalledWith(document.body)
+		expect(createAgent).toHaveBeenCalledTimes(1)
+		expect(createPanel).toHaveBeenCalledTimes(1)
+		shell.dispose()
+	})
+
+	it('mounts the first lazy Panel into an active fullscreen element', async () => {
+		const fullscreenRoot = document.createElement('div')
+		document.body.appendChild(fullscreenRoot)
+		setFullscreenElement(fullscreenRoot)
+		const panel = new FakePanel()
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent: () => new FakeAgent() as unknown as MultiPageAgent,
+			createPanel: () => panel as never,
+		})
+
+		expect(document.querySelector('#page-agent-inpage-launcher')?.parentElement).toBe(
+			fullscreenRoot
+		)
+		await shell.toggle()
+		expect(panel.mount).toHaveBeenCalledWith(fullscreenRoot)
+		shell.dispose()
+	})
+
+	it('removes its fullscreen listener on disposal', () => {
+		const removeListener = vi.spyOn(document, 'removeEventListener')
+		const shell = new InPageAgentShell()
+
+		shell.dispose()
+		expect(removeListener).toHaveBeenCalledWith('fullscreenchange', expect.any(Function))
 	})
 })

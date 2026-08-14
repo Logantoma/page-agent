@@ -19,13 +19,17 @@ export class InPageLauncher {
 		if (existing) {
 			existing.replaceWith(this.element)
 		} else {
-			document.body.appendChild(this.element)
+			this.mount()
 		}
+	}
+
+	mount(target: HTMLElement = document.body): void {
+		if (this.#disposed || this.element.parentElement === target) return
+		target.appendChild(this.element)
 	}
 
 	show(): void {
 		if (this.#disposed) return
-		if (!this.element.isConnected) document.body.appendChild(this.element)
 		this.element.style.display = 'flex'
 	}
 
