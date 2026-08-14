@@ -1,7 +1,6 @@
 import { AlertTriangle, Eraser, RotateCcw } from 'lucide-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
-import { LLM_PROFILE_STORE_KEY } from '@/agent/LlmProfileStore'
 import { Button } from '@/components/ui/button'
 
 interface Props {
@@ -29,12 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 	}
 
 	handleResetConfig = async () => {
-		await chrome.storage.local.remove([
-			LLM_PROFILE_STORE_KEY,
-			'llmConfig',
-			'language',
-			'advancedConfig',
-		])
+		await chrome.storage.local.remove(['llmConfig', 'language', 'advancedConfig'])
 		window.location.reload()
 	}
 
