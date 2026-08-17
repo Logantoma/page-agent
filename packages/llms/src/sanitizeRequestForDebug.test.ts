@@ -23,7 +23,7 @@ describe('sanitizeRequestForDebug', () => {
 		const sanitized = sanitizeRequestForDebug(request) as any
 		expect(sanitized.messages[0].content[0].text).toBe('hello')
 		expect(sanitized.messages[0].content[1].image_url.url).toBe('[inline image omitted]')
-		expect(request.messages[0].content[1].image_url.url).toContain('AAAABBBB')
+		expect(request.messages[0]!.content[1]!.image_url?.url).toContain('AAAABBBB')
 	})
 
 	it('leaves normal URLs unchanged', () => {
