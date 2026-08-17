@@ -3,12 +3,29 @@
  */
 import type * as z from 'zod/v4'
 
+export interface TextMessageContentPart {
+	type: 'text'
+	text: string
+}
+
+export interface ImageUrlMessageContentPart {
+	type: 'image_url'
+	image_url: {
+		url: string
+		detail?: 'auto' | 'low' | 'high'
+	}
+}
+
+export type MessageContentPart = TextMessageContentPart | ImageUrlMessageContentPart
+export type MessageContent = string | MessageContentPart[]
+
 /**
- * Message format - OpenAI standard (industry standard)
+ * Message format - OpenAI compatible chat-completions format.
+ * User content may be plain text or multimodal content parts.
  */
 export interface Message {
 	role: 'system' | 'user' | 'assistant' | 'tool'
-	content?: string | null
+	content?: MessageContent | null
 	tool_calls?: {
 		id: string
 		type: 'function'
