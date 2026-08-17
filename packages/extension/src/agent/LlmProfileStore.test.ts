@@ -87,4 +87,76 @@ describe('LlmProfileStore', () => {
 			],
 		})
 	})
+
+	it('preserves inactive profiles when saving the exact built-in demo config', () => {
+		const profiles = [
+			{
+				id: 'a',
+				name: 'A',
+				provider: 'custom' as const,
+				config: { baseURL: 'https://a.example.com', model: 'a' },
+			},
+			{
+				id: 'b',
+				name: 'B',
+				provider: 'deepseek' as const,
+				config: { baseURL: 'https://api.deepseek.com', model: 'b' },
+			},
+		]
+
+		const store = updateActiveProfileConfig(
+			{ version: 1, activeProfileId: 'builtin:demo', profiles },
+			DEMO_CONFIG
+		)
+
+		expect(store).toEqual({ version: 1, activeProfileId: 'builtin:demo', profiles })
+	})
+
+	it('appends a custom config to inactive profiles when the built-in demo is active', () => {
+		const profiles = [
+			{
+				id: 'a',
+				name: 'A',
+				provider: 'custom' as const,
+				config: { baseURL: 'https://a.example.com', model: 'a' },
+			},
+		]
+
+		const store = updateActiveProfileConfig(
+			{ version: 1, activeProfileId: 'builtin:demo', profiles },
+			{ baseURL: 'https://custom.example.com', model: 'custom' }
+		)
+
+		expect(store).toMatchObject({
+			activeProfileId: 'default',
+			profiles: [
+				profiles[0],
+				expect.objectContaining({
+					id: 'default',
+					config: { baseURL: 'https://custom.example.com', model: 'custom' },
+				}),
+			],
+		})
+	})
+
+	it('generates a non-colliding profile id when default already exists', () => {
+		const store = updateActiveProfileConfig(
+			{
+				version: 1,
+				activeProfileId: 'builtin:demo',
+				profiles: [
+					{
+						id: 'default',
+						name: 'Existing default',
+						provider: 'custom',
+						config: { baseURL: 'https://existing.example.com', model: 'existing' },
+					},
+				],
+			},
+			{ baseURL: 'https://custom.example.com', model: 'custom' }
+		)
+
+		expect(store.activeProfileId).toBe('default-2')
+		expect(store.profiles.map(({ id }) => id)).toEqual(['default', 'default-2'])
+	})
 })

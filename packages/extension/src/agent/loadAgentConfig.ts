@@ -13,6 +13,7 @@ import {
 	resolveActiveProfile,
 	serializeLlmProfileConfig,
 } from './LlmProfileStore'
+import { DEMO_CONFIG } from './constants'
 
 /** Language preference: undefined means follow system. */
 export type LanguagePreference = SupportedLanguage | undefined
@@ -75,10 +76,8 @@ export async function loadAgentConfig(): Promise<ExtConfig> {
 		return { ...resolved.config, ...advancedConfig, language }
 	}
 
-	const legacyConfig = result.llmConfig as LLMConfig | undefined
-	const store = legacyConfig
-		? createLegacyMigration(legacyConfig, { ...advancedConfig, disableNamedToolChoice })
-		: createBuiltinDemoStore()
+	const legacyConfig = (result.llmConfig as LLMConfig | undefined) ?? DEMO_CONFIG
+	const store = createLegacyMigration(legacyConfig, { ...advancedConfig, disableNamedToolChoice })
 	persistStoreBestEffort(store)
 
 	return { ...resolveActiveProfile(store).config, ...advancedConfig, language }

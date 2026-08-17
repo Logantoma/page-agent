@@ -118,6 +118,39 @@ describe('loadAgentConfig', () => {
 		})
 	})
 
+	it('migrates an absent legacy config with an explicit advanced compatibility override', async () => {
+		get.mockResolvedValue({ advancedConfig: { disableNamedToolChoice: true } })
+
+		await expect(loadAgentConfig()).resolves.toEqual({
+			...DEMO_CONFIG,
+			disableNamedToolChoice: true,
+			language: undefined,
+		})
+		expect(set).toHaveBeenCalledWith({
+			[LLM_PROFILE_STORE_KEY]: expect.objectContaining({
+				activeProfileId: 'legacy-imported',
+				profiles: [
+					expect.objectContaining({
+						config: expect.objectContaining({ disableNamedToolChoice: true }),
+					}),
+				],
+			}),
+		})
+	})
+
+	it('migrates an absent legacy config without compatibility overrides to built-in demo', async () => {
+		get.mockResolvedValue({})
+
+		await expect(loadAgentConfig()).resolves.toEqual({ ...DEMO_CONFIG, language: undefined })
+		expect(set).toHaveBeenCalledWith({
+			[LLM_PROFILE_STORE_KEY]: {
+				version: 1,
+				activeProfileId: BUILTIN_DEMO_PROFILE_ID,
+				profiles: [],
+			},
+		})
+	})
+
 	it('canonicalizes a bare legacy demo endpoint to the derived built-in profile', async () => {
 		get.mockResolvedValue({
 			llmConfig: { baseURL: LEGACY_TESTING_ENDPOINTS[0], model: 'old-model' },

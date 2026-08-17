@@ -83,14 +83,22 @@ export function updateActiveProfileConfig(
 ): LlmProfileStoreV1 {
 	const resolved = resolveActiveProfile(store)
 	if (resolved.store.activeProfileId === BUILTIN_DEMO_PROFILE_ID) {
-		return isBareDemoConfig(config)
-			? createBuiltinDemoStore()
-			: createProfileStore({
-					id: 'default',
+		if (isBareDemoConfig(config)) return resolved.store
+
+		const id = createUniqueProfileId(resolved.store.profiles, 'default')
+		return {
+			...resolved.store,
+			activeProfileId: id,
+			profiles: [
+				...resolved.store.profiles,
+				{
+					id,
 					name: 'Default API',
 					provider: inferProviderKind(config.baseURL),
 					config,
-				})
+				},
+			],
+		}
 	}
 
 	return {
@@ -101,6 +109,15 @@ export function updateActiveProfileConfig(
 				: profile
 		),
 	}
+}
+
+function createUniqueProfileId(profiles: PersistedLlmProfile[], baseId: string): string {
+	const ids = new Set(profiles.map(({ id }) => id))
+	if (!ids.has(baseId)) return baseId
+
+	let suffix = 2
+	while (ids.has(`${baseId}-${suffix}`)) suffix += 1
+	return `${baseId}-${suffix}`
 }
 
 export function parseLlmProfileStore(value: unknown): LlmProfileStoreV1 | null {
