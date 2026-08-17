@@ -6,7 +6,7 @@ const VISUAL_CONTEXT_NOTE =
 export function injectVisualObservation(
 	requestBody: Record<string, unknown>,
 	imageUrl: string,
-	detail: 'auto' | 'low' | 'high' = 'low'
+	detail: 'auto' | 'low' | 'high' = 'high'
 ): Record<string, unknown> {
 	const messages = requestBody.messages
 	if (!Array.isArray(messages) || !imageUrl) return requestBody
