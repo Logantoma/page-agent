@@ -10,6 +10,7 @@ import {
 	createProfileStore,
 	parseLlmProfileStore,
 	serializeLlmProfileConfig,
+	setActiveProfile,
 	updateActiveProfileConfig,
 } from './LlmProfileStore'
 import { MultiPageAgent } from './MultiPageAgent'
@@ -31,6 +32,7 @@ export interface UseAgentResult {
 	execute: (task: string) => Promise<ExecutionResult>
 	stop: () => void
 	configure: (config: ExtConfig) => Promise<void>
+	switchProfile: (profileId: string) => Promise<void>
 }
 
 export function useAgent(): UseAgentResult {
@@ -40,9 +42,39 @@ export function useAgent(): UseAgentResult {
 	const [activity, setActivity] = useState<AgentActivity | null>(null)
 	const [currentTask, setCurrentTask] = useState('')
 	const [config, setConfig] = useState<ExtConfig | null>(null)
+	const configRef = useRef<ExtConfig | null>(null)
+	const pendingConfigRecycleRef = useRef(false)
+	const reloadRef = useRef<() => Promise<void>>(async () => {})
+
+	const ensureIdle = () => {
+		if (agentRef.current?.status === 'running')
+			throw new Error('Cannot change configuration while Agent is running')
+	}
+
+	const reloadEffectiveConfig = useCallback(async () => {
+		const nextConfig = await loadAgentConfig()
+		if (!sameEffectiveConfig(configRef.current, nextConfig)) {
+			configRef.current = nextConfig
+			setConfig(nextConfig)
+		}
+	}, [])
+	reloadRef.current = reloadEffectiveConfig
 
 	useEffect(() => {
-		void loadAgentConfig().then(setConfig)
+		void reloadEffectiveConfig()
+	}, [reloadEffectiveConfig])
+
+	useEffect(() => {
+		const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>) => {
+			if (!hasRelevantConfigChange(changes)) return
+			if (agentRef.current?.status === 'running') {
+				pendingConfigRecycleRef.current = true
+				return
+			}
+			void reloadRef.current()
+		}
+		chrome.storage.onChanged.addListener(onStorageChanged)
+		return () => chrome.storage.onChanged.removeListener(onStorageChanged)
 	}, [])
 
 	useEffect(() => {
@@ -60,6 +92,10 @@ export function useAgent(): UseAgentResult {
 			setStatus(newStatus)
 			if (newStatus !== 'running') {
 				setActivity(null)
+				if (pendingConfigRecycleRef.current) {
+					pendingConfigRecycleRef.current = false
+					void reloadRef.current()
+				}
 			}
 		}
 
@@ -106,7 +142,9 @@ export function useAgent(): UseAgentResult {
 			experimentalIncludeAllTabs,
 			...llmConfig
 		}: ExtConfig) => {
+			ensureIdle()
 			const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
+			ensureIdle()
 			const storedProfileStore = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
 			const profileConfig = serializeLlmProfileConfig(llmConfig)
 			const profileStore = storedProfileStore
@@ -129,9 +167,23 @@ export function useAgent(): UseAgentResult {
 				experimentalIncludeAllTabs,
 			}
 			await chrome.storage.local.set({ advancedConfig })
-			setConfig({ ...llmConfig, ...advancedConfig, language })
+			await reloadEffectiveConfig()
 		},
 		[]
+	)
+
+	const switchProfile = useCallback(
+		async (profileId: string) => {
+			ensureIdle()
+			const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
+			ensureIdle()
+			const store = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
+			if (!store) throw new Error('LLM profile store is unavailable')
+			const nextStore = setActiveProfile(store, profileId)
+			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: nextStore })
+			await reloadEffectiveConfig()
+		},
+		[reloadEffectiveConfig]
 	)
 
 	return {
@@ -143,5 +195,28 @@ export function useAgent(): UseAgentResult {
 		execute,
 		stop,
 		configure,
+		switchProfile,
 	}
+}
+
+function hasRelevantConfigChange(changes: Record<string, chrome.storage.StorageChange>): boolean {
+	return ['llmProfileStoreV1', 'language', 'advancedConfig'].some((key) => key in changes)
+}
+
+function sameEffectiveConfig(a: ExtConfig | null, b: ExtConfig): boolean {
+	if (!a) return false
+	const keys: (keyof ExtConfig)[] = [
+		'baseURL',
+		'model',
+		'apiKey',
+		'temperature',
+		'maxRetries',
+		'disableNamedToolChoice',
+		'language',
+		'maxSteps',
+		'systemInstruction',
+		'experimentalLlmsTxt',
+		'experimentalIncludeAllTabs',
+	]
+	return keys.every((key) => a[key] === b[key])
 }

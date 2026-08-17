@@ -23,11 +23,24 @@ export class InPageAgentShell {
 	#opened = false
 	#disposed = false
 	#initializing: Promise<void> | null = null
+	#pendingConfigRecycle = false
 	#loadConfig: typeof loadAgentConfig
 	#createAgent: AgentFactory
 	#createPanel: PanelFactory
 	#onFullscreenChange = () => this.#syncMountTarget()
+	#onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>) => {
+		if (!hasRelevantConfigChange(changes) || this.#disposed || !this.#agent) return
+		if (this.#agent.status === 'running') {
+			this.#pendingConfigRecycle = true
+			return
+		}
+		this.#recycleAgent()
+	}
+	#onAgentStatusChange = () => {
+		if (this.#pendingConfigRecycle && this.#agent?.status !== 'running') this.#recycleAgent()
+	}
 	#onAgentDispose = () => {
+		this.#agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
 		this.#panel = null
 		this.#agent = null
 		this.#opened = false
@@ -44,6 +57,7 @@ export class InPageAgentShell {
 			onClick: () => void this.toggle().catch((error) => console.error(error)),
 		})
 		document.addEventListener('fullscreenchange', this.#onFullscreenChange)
+		globalThis.chrome?.storage?.onChanged?.addListener(this.#onStorageChanged)
 		this.#syncMountTarget()
 	}
 
@@ -69,12 +83,9 @@ export class InPageAgentShell {
 	dispose(): void {
 		if (this.#disposed) return
 		this.#disposed = true
-		this.#panel?.dispose()
-		this.#agent?.removeEventListener('dispose', this.#onAgentDispose)
-		this.#agent?.dispose()
-		this.#panel = null
-		this.#agent = null
+		this.#recycleAgent()
 		document.removeEventListener('fullscreenchange', this.#onFullscreenChange)
+		globalThis.chrome?.storage?.onChanged?.removeListener(this.#onStorageChanged)
 		this.#launcher.dispose()
 	}
 
@@ -89,6 +100,7 @@ export class InPageAgentShell {
 		try {
 			agent = this.#createAgent(config)
 			agent.addEventListener('dispose', this.#onAgentDispose)
+			agent.addEventListener('statuschange', this.#onAgentStatusChange)
 			panel = this.#createPanel(agent, config)
 			panel.mount(this.#resolveMountTarget())
 			panel.show()
@@ -101,10 +113,24 @@ export class InPageAgentShell {
 		} finally {
 			if (!initialized) {
 				panel?.dispose()
+				agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
 				agent?.removeEventListener('dispose', this.#onAgentDispose)
 				agent?.dispose()
 			}
 		}
+	}
+
+	#recycleAgent(): void {
+		const panel = this.#panel
+		const agent = this.#agent
+		this.#pendingConfigRecycle = false
+		this.#panel = null
+		this.#agent = null
+		this.#opened = false
+		agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
+		agent?.removeEventListener('dispose', this.#onAgentDispose)
+		panel?.dispose()
+		agent?.dispose()
 	}
 
 	#resolveMountTarget(): HTMLElement {
@@ -118,6 +144,10 @@ export class InPageAgentShell {
 		this.#launcher.mount(target)
 		this.#panel?.mount(target)
 	}
+}
+
+function hasRelevantConfigChange(changes: Record<string, chrome.storage.StorageChange>): boolean {
+	return ['llmProfileStoreV1', 'language', 'advancedConfig'].some((key) => key in changes)
 }
 
 function createAgent(config: ExtConfig): MultiPageAgent {

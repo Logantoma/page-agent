@@ -6,7 +6,12 @@ import type { ExtConfig } from '../agent/loadAgentConfig'
 import { InPageAgentShell } from './InPageAgentShell'
 
 class FakeAgent extends EventTarget {
+	status = 'idle'
 	dispose = vi.fn(() => this.dispatchEvent(new Event('dispose')))
+	setStatus(status: string) {
+		this.status = status
+		this.dispatchEvent(new Event('statuschange'))
+	}
 }
 
 class FakePanel {
@@ -186,5 +191,64 @@ describe('InPageAgentShell', () => {
 
 		shell.dispose()
 		expect(removeListener).toHaveBeenCalledWith('fullscreenchange', expect.any(Function))
+	})
+
+	it('recycles an idle Agent and Panel when relevant storage changes', async () => {
+		const listeners = new Set<(changes: Record<string, chrome.storage.StorageChange>) => void>()
+		vi.stubGlobal('chrome', {
+			storage: {
+				onChanged: {
+					addListener: (listener: never) => listeners.add(listener),
+					removeListener: (listener: never) => listeners.delete(listener),
+				},
+			},
+		})
+		const agent = new FakeAgent()
+		const panel = new FakePanel()
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent: () => agent as unknown as MultiPageAgent,
+			createPanel: () => panel as never,
+		})
+		await shell.toggle()
+
+		listeners.forEach((listener) =>
+			listener({ llmProfileStoreV1: {} as chrome.storage.StorageChange })
+		)
+		expect(panel.dispose).toHaveBeenCalledOnce()
+		expect(agent.dispose).toHaveBeenCalledOnce()
+		expect(document.querySelector('#page-agent-inpage-launcher')).not.toBeNull()
+		shell.dispose()
+	})
+
+	it('defers repeated storage changes until a running Agent reaches a terminal status', async () => {
+		const listeners = new Set<(changes: Record<string, chrome.storage.StorageChange>) => void>()
+		vi.stubGlobal('chrome', {
+			storage: {
+				onChanged: {
+					addListener: (listener: never) => listeners.add(listener),
+					removeListener: (listener: never) => listeners.delete(listener),
+				},
+			},
+		})
+		const agent = new FakeAgent()
+		const panel = new FakePanel()
+		const shell = new InPageAgentShell({
+			loadConfig: async () => ({ baseURL: 'https://example.test', model: 'test-model' }),
+			createAgent: () => agent as unknown as MultiPageAgent,
+			createPanel: () => panel as never,
+		})
+		await shell.toggle()
+		agent.setStatus('running')
+		listeners.forEach((listener) => listener({ language: {} as chrome.storage.StorageChange }))
+		listeners.forEach((listener) =>
+			listener({ advancedConfig: {} as chrome.storage.StorageChange })
+		)
+		expect(agent.dispose).not.toHaveBeenCalled()
+
+		agent.setStatus('completed')
+		expect(agent.dispose).toHaveBeenCalledOnce()
+		expect(panel.dispose).toHaveBeenCalledOnce()
+		shell.dispose()
 	})
 })

@@ -111,6 +111,16 @@ export function updateActiveProfileConfig(
 	}
 }
 
+export function setActiveProfile(store: LlmProfileStoreV1, profileId: string): LlmProfileStoreV1 {
+	if (
+		profileId !== BUILTIN_DEMO_PROFILE_ID &&
+		!store.profiles.some((profile) => profile.id === profileId)
+	) {
+		throw new Error(`Unknown LLM profile: ${profileId}`)
+	}
+	return profileId === store.activeProfileId ? store : { ...store, activeProfileId: profileId }
+}
+
 function createUniqueProfileId(profiles: PersistedLlmProfile[], baseId: string): string {
 	const ids = new Set(profiles.map(({ id }) => id))
 	if (!ids.has(baseId)) return baseId
