@@ -93,7 +93,13 @@ function isSignificantVisualElement(element: Element): boolean {
 	const rect = element.getBoundingClientRect()
 	if (!intersectsViewport(rect)) return false
 	const style = getComputedStyle(element)
-	if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false
+	const opacity = Number.parseFloat(style.opacity)
+	if (
+		style.display === 'none' ||
+		style.visibility === 'hidden' ||
+		(Number.isFinite(opacity) && opacity === 0)
+	)
+		return false
 
 	const minWidth = element.tagName === 'CANVAS' ? 48 : 80
 	const minHeight = element.tagName === 'CANVAS' ? 48 : 60
