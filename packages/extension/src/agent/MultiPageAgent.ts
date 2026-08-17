@@ -2,6 +2,8 @@ import { type AgentConfig, PageAgentCore } from '@page-agent/core'
 
 import { RemotePageController } from './RemotePageController'
 import { TabsController } from './TabsController'
+import { createVisualObservationProvider } from './VisualObservation'
+import { injectVisualObservation } from './injectVisualObservation'
 import SYSTEM_PROMPT from './system_prompt.md?raw'
 import { createTabTools } from './tabTools'
 
@@ -14,6 +16,7 @@ function detectLanguage(): 'en-US' | 'zh-CN' {
 interface MultiPageAgentConfig extends AgentConfig {
 	includeInitialTab?: boolean
 	experimentalIncludeAllTabs?: boolean
+	experimentalVisualObservation?: boolean
 }
 
 /**
@@ -38,6 +41,10 @@ export class MultiPageAgent extends PageAgentCore {
 
 		const includeInitialTab = config.includeInitialTab ?? true
 		const experimentalIncludeAllTabs = config.experimentalIncludeAllTabs ?? false
+		const experimentalVisualObservation = config.experimentalVisualObservation ?? false
+		const captureVisualObservation = createVisualObservationProvider(() => tabsController.currentTabId)
+		const upstreamTransformRequestBody = config.transformRequestBody
+		let latestVisualObservation: string | null = null
 
 		/**
 		 * Project agent status into chrome.storage. The content script polls
@@ -58,20 +65,32 @@ export class MultiPageAgent extends PageAgentCore {
 			pageController: pageController as any,
 			customTools: customTools,
 			customSystemPrompt: systemPrompt,
+			transformRequestBody: (requestBody) => {
+				const transformed = upstreamTransformRequestBody?.(requestBody)
+				const effectiveBody = transformed ?? requestBody
+				if (!experimentalVisualObservation || !latestVisualObservation) return effectiveBody
+				return injectVisualObservation(effectiveBody, latestVisualObservation, 'low')
+			},
 
 			onBeforeTask: async (agent) => {
+				latestVisualObservation = null
 				await tabsController.init(agent.task, { includeInitialTab, experimentalIncludeAllTabs })
 			},
 
 			onBeforeStep: async (agent) => {
 				// pull latest tab state so that tabs changes can be observed
 				await tabsController.syncTabs()
+				latestVisualObservation = null
 				if (!tabsController.currentTabId) return
 				// make sure the current tab is loaded before the step starts
 				await tabsController.waitUntilTabLoaded(tabsController.currentTabId)
+				if (experimentalVisualObservation) {
+					latestVisualObservation = await captureVisualObservation()
+				}
 			},
 
 			onDispose: () => {
+				latestVisualObservation = null
 				if (heartBeatInterval) {
 					clearInterval(heartBeatInterval)
 					heartBeatInterval = null
