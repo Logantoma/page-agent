@@ -1,7 +1,7 @@
 import { History, Send, Settings, Square } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { ConfigPanel } from '@/components/ConfigPanel'
+import { ProfileConfigPanel } from '@/components/ProfileConfigPanel'
 import { HistoryDetail } from '@/components/HistoryDetail'
 import { HistoryList } from '@/components/HistoryList'
 import { ActivityCard, EventCard } from '@/components/cards'
@@ -29,7 +29,17 @@ export default function App() {
 	const historyRef = useRef<HTMLDivElement>(null)
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-	const { status, history, activity, currentTask, config, execute, stop, configure } = useAgent()
+	const {
+		status,
+		history,
+		activity,
+		currentTask,
+		config,
+		execute,
+		stop,
+		configure,
+		switchProfile,
+	} = useAgent()
 
 	// Persist session when task finishes
 	const prevStatusRef = useRef(status)
@@ -95,12 +105,11 @@ export default function App() {
 
 	if (view.name === 'config') {
 		return (
-			<ConfigPanel
+			<ProfileConfigPanel
 				config={config}
-				onSave={async (newConfig) => {
-					await configure(newConfig)
-					setView({ name: 'chat' })
-				}}
+				status={status}
+				onSave={configure}
+				onSwitchProfile={switchProfile}
 				onClose={() => setView({ name: 'chat' })}
 			/>
 		)
