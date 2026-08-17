@@ -23,6 +23,7 @@ export interface AdvancedConfig {
 	systemInstruction?: string
 	experimentalLlmsTxt?: boolean
 	experimentalIncludeAllTabs?: boolean
+	experimentalVisualObservation?: boolean
 }
 
 export interface ExtConfig extends LLMConfig, AdvancedConfig {
