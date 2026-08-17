@@ -25,8 +25,10 @@ vi.mock('./MultiPageAgent', () => ({
 		execute = vi.fn(async () => ({ success: true, data: 'ok' }))
 		stop = vi.fn()
 		history: [] = []
-		constructor() {
+		config: Record<string, unknown>
+		constructor(config: Record<string, unknown>) {
 			super()
+			this.config = config
 			mocks.agents.push(this)
 		}
 		setStatus(status: string) {
@@ -257,6 +259,7 @@ describe('useAgent lifecycle', () => {
 		oldAgent.setStatus('completed')
 		await flush()
 		expect(agents).toHaveLength(2)
+		expect(agents[1].config.model).toBe('latest')
 		expect(agents[1].execute).not.toHaveBeenCalled()
 	})
 
@@ -281,7 +284,7 @@ describe('useAgent lifecycle', () => {
 		await flush()
 		await flush()
 		expect(latest!.config?.model).toBe('D')
-		expect(agents.at(-1)).toBeDefined()
+		expect(agents.at(-1)?.config.model).toBe('D')
 	})
 
 	it('coalesces configure and its own storage change into one replacement', async () => {
@@ -299,5 +302,33 @@ describe('useAgent lifecycle', () => {
 		await latest!.configure({ baseURL: 'https://example.com', model: 'next' })
 		expect(agents).toHaveLength(2)
 		expect(agents[0].dispose).toHaveBeenCalledOnce()
+	})
+
+	it('blocks execution while a configure storage write is still in flight', async () => {
+		loadAgentConfig.mockResolvedValueOnce({ baseURL: 'https://example.com', model: 'first' })
+		loadAgentConfig.mockResolvedValue({ baseURL: 'https://example.com', model: 'next' })
+		get.mockResolvedValue({})
+		let resolveSet!: () => void
+		set.mockReturnValueOnce(new Promise<void>((resolve) => (resolveSet = resolve)))
+		await renderHarness()
+		await flush()
+		const oldAgent = agents[0]
+
+		const configuring = latest!.configure({ baseURL: 'https://example.com', model: 'next' })
+		await flush()
+		expect(set).toHaveBeenCalledTimes(1)
+
+		const execution = latest!.execute('after config write')
+		await flush()
+		expect(oldAgent.execute).not.toHaveBeenCalled()
+		expect(agents).toHaveLength(1)
+
+		resolveSet()
+		await configuring
+		await execution
+		expect(agents).toHaveLength(2)
+		expect(oldAgent.execute).not.toHaveBeenCalled()
+		expect(agents[1].config.model).toBe('next')
+		expect(agents[1].execute).toHaveBeenCalledWith('after config write')
 	})
 })
