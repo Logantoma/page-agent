@@ -48,6 +48,7 @@ export function useAgent(): UseAgentResult {
 	const transitionInFlightRef = useRef<Promise<void> | null>(null)
 	const transitionDirtyRef = useRef(false)
 	const replacementReadyRef = useRef<(() => void) | null>(null)
+	const configMutationInFlightRef = useRef<Promise<void> | null>(null)
 
 	const ensureIdle = () => {
 		if (agentRef.current?.status === 'running')
@@ -78,6 +79,24 @@ export function useAgent(): UseAgentResult {
 		return transition
 	}, [])
 	scheduleTransitionRef.current = scheduleConfigTransition
+
+	const runConfigMutation = useCallback(async <T>(operation: () => Promise<T>): Promise<T> => {
+		const previousMutation = configMutationInFlightRef.current
+		let release!: () => void
+		const ownBarrier = new Promise<void>((resolve) => {
+			release = resolve
+		})
+		const barrier = previousMutation ? previousMutation.then(() => ownBarrier) : ownBarrier
+		configMutationInFlightRef.current = barrier
+
+		if (previousMutation) await previousMutation
+		try {
+			return await operation()
+		} finally {
+			release()
+			if (configMutationInFlightRef.current === barrier) configMutationInFlightRef.current = null
+		}
+	}, [])
 
 	useEffect(() => {
 		void scheduleConfigTransition()
@@ -147,8 +166,20 @@ export function useAgent(): UseAgentResult {
 	}, [config])
 
 	const execute = useCallback(async (task: string) => {
-		const transition = transitionInFlightRef.current
-		if (transition) await transition
+		while (true) {
+			const mutation = configMutationInFlightRef.current
+			if (mutation) {
+				await mutation
+				continue
+			}
+			const transition = transitionInFlightRef.current
+			if (transition) {
+				await transition
+				continue
+			}
+			break
+		}
+
 		const agent = agentRef.current
 		if (!agent) throw new Error('Agent not initialized')
 
@@ -171,46 +202,58 @@ export function useAgent(): UseAgentResult {
 			...llmConfig
 		}: ExtConfig) => {
 			ensureIdle()
-			const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
-			ensureIdle()
-			const storedProfileStore = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
-			const profileConfig = serializeLlmProfileConfig(llmConfig)
-			const profileStore = storedProfileStore
-				? updateActiveProfileConfig(storedProfileStore, profileConfig)
-				: createProfileStore({
-						...createMigratedProfile(profileConfig),
-						id: 'default',
-						name: 'Default API',
-					})
-			const advancedConfig: AdvancedConfig = {
-				maxSteps,
-				systemInstruction,
-				experimentalLlmsTxt,
-				experimentalIncludeAllTabs,
-			}
-			ensureIdle()
-			await chrome.storage.local.set({
-				[LLM_PROFILE_STORE_KEY]: profileStore,
-				language: language ?? null,
-				advancedConfig,
+			return runConfigMutation(async () => {
+				const transition = transitionInFlightRef.current
+				if (transition) await transition
+				ensureIdle()
+
+				const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
+				ensureIdle()
+				const storedProfileStore = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
+				const profileConfig = serializeLlmProfileConfig(llmConfig)
+				const profileStore = storedProfileStore
+					? updateActiveProfileConfig(storedProfileStore, profileConfig)
+					: createProfileStore({
+							...createMigratedProfile(profileConfig),
+							id: 'default',
+							name: 'Default API',
+						})
+				const advancedConfig: AdvancedConfig = {
+					maxSteps,
+					systemInstruction,
+					experimentalLlmsTxt,
+					experimentalIncludeAllTabs,
+				}
+				ensureIdle()
+				await chrome.storage.local.set({
+					[LLM_PROFILE_STORE_KEY]: profileStore,
+					language: language ?? null,
+					advancedConfig,
+				})
+				await scheduleConfigTransition()
 			})
-			await scheduleConfigTransition()
 		},
-		[]
+		[runConfigMutation, scheduleConfigTransition]
 	)
 
 	const switchProfile = useCallback(
 		async (profileId: string) => {
 			ensureIdle()
-			const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
-			ensureIdle()
-			const store = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
-			if (!store) throw new Error('LLM profile store is unavailable')
-			const nextStore = setActiveProfile(store, profileId)
-			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: nextStore })
-			await scheduleConfigTransition()
+			return runConfigMutation(async () => {
+				const transition = transitionInFlightRef.current
+				if (transition) await transition
+				ensureIdle()
+
+				const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
+				ensureIdle()
+				const store = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
+				if (!store) throw new Error('LLM profile store is unavailable')
+				const nextStore = setActiveProfile(store, profileId)
+				await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: nextStore })
+				await scheduleConfigTransition()
+			})
 		},
-		[scheduleConfigTransition]
+		[runConfigMutation, scheduleConfigTransition]
 	)
 
 	return {
