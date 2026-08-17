@@ -199,6 +199,7 @@ export function useAgent(): UseAgentResult {
 			systemInstruction,
 			experimentalLlmsTxt,
 			experimentalIncludeAllTabs,
+			experimentalVisualObservation,
 			...llmConfig
 		}: ExtConfig) => {
 			ensureIdle()
@@ -223,6 +224,7 @@ export function useAgent(): UseAgentResult {
 					systemInstruction,
 					experimentalLlmsTxt,
 					experimentalIncludeAllTabs,
+					experimentalVisualObservation,
 				}
 				ensureIdle()
 				await chrome.storage.local.set({
@@ -287,6 +289,7 @@ function sameEffectiveConfig(a: ExtConfig | null, b: ExtConfig): boolean {
 		'systemInstruction',
 		'experimentalLlmsTxt',
 		'experimentalIncludeAllTabs',
+		'experimentalVisualObservation',
 	]
 	return keys.every((key) => a[key] === b[key])
 }
