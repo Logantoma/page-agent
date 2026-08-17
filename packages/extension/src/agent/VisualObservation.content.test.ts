@@ -1,10 +1,37 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { hasSignificantVisualContent } from './VisualObservation.content'
+import { hasSignificantVisualContent, initVisualObservationContent } from './VisualObservation.content'
+
+let runtimeListener:
+	| ((
+			message: unknown,
+			sender: chrome.runtime.MessageSender,
+			sendResponse: (response: unknown) => void
+	  ) => true | undefined)
+	| null = null
+
+beforeEach(() => {
+	runtimeListener = null
+	vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+		callback(0)
+		return 1
+	})
+	vi.stubGlobal('chrome', {
+		runtime: {
+			onMessage: {
+				addListener: vi.fn((listener) => {
+					runtimeListener = listener
+				}),
+				removeListener: vi.fn(),
+			},
+		},
+	})
+})
 
 afterEach(() => {
 	document.body.replaceChildren()
+	vi.unstubAllGlobals()
 })
 
 describe('hasSignificantVisualContent', () => {
@@ -33,6 +60,55 @@ describe('hasSignificantVisualContent', () => {
 		document.body.append(wrapper)
 
 		expect(hasSignificantVisualContent()).toBe(false)
+	})
+})
+
+describe('visual capture preparation', () => {
+	it('hard-hides agent UI without transitions and restores exact inline styles', async () => {
+		const canvas = document.createElement('canvas')
+		canvas.getBoundingClientRect = () => rect(20, 20, 320, 220)
+		document.body.append(canvas)
+
+		const panel = document.createElement('div')
+		panel.id = 'page-agent-runtime_agent-panel'
+		panel.setAttribute('data-page-agent-ignore', 'true')
+		panel.style.setProperty('opacity', '1')
+		panel.style.setProperty('visibility', 'visible')
+		panel.style.setProperty('transition', 'all 0.3s ease-in-out')
+		document.body.append(panel)
+
+		const dispose = initVisualObservationContent()
+		expect(runtimeListener).not.toBeNull()
+
+		let prepareResponse: any
+		const pending = runtimeListener!(
+			{ type: 'VISUAL_OBSERVATION_PREPARE' },
+			{} as chrome.runtime.MessageSender,
+			(response) => {
+				prepareResponse = response
+			}
+		)
+		expect(pending).toBe(true)
+		await vi.waitFor(() => expect(prepareResponse?.shouldCapture).toBe(true))
+
+		expect(panel.style.getPropertyValue('transition')).toBe('none')
+		expect(panel.style.getPropertyPriority('transition')).toBe('important')
+		expect(panel.style.getPropertyValue('opacity')).toBe('0')
+		expect(panel.style.getPropertyPriority('opacity')).toBe('important')
+		expect(panel.style.getPropertyValue('visibility')).toBe('hidden')
+		expect(panel.style.getPropertyPriority('visibility')).toBe('important')
+
+		runtimeListener!(
+			{ type: 'VISUAL_OBSERVATION_RESTORE', token: prepareResponse.token },
+			{} as chrome.runtime.MessageSender,
+			() => undefined
+		)
+
+		expect(panel.style.getPropertyValue('transition')).toBe('all 0.3s ease-in-out')
+		expect(panel.style.getPropertyValue('opacity')).toBe('1')
+		expect(panel.style.getPropertyValue('visibility')).toBe('visible')
+
+		dispose()
 	})
 })
 
