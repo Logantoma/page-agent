@@ -4,6 +4,7 @@
 import * as z from 'zod/v4'
 
 import { InvokeError, InvokeErrorTypes } from './errors'
+import { sanitizeRequestForDebug } from './sanitizeRequestForDebug'
 import type {
 	InvokeOptions,
 	InvokeResult,
@@ -263,7 +264,7 @@ export class OpenAIClient implements LLMClient {
 				reasoningTokens: data.usage?.completion_tokens_details?.reasoning_tokens,
 			},
 			rawResponse: data,
-			rawRequest: finalRequestBody,
+			rawRequest: sanitizeRequestForDebug(finalRequestBody),
 		}
 	}
 }
