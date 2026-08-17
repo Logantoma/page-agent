@@ -17,7 +17,12 @@ import {
 	BUILTIN_DEMO_PROFILE_ID,
 	LLM_PROFILE_STORE_KEY,
 	createBuiltinDemoStore,
+	createMigratedProfile,
+	createProfileStore,
+	isBareDemoConfig,
 	parseLlmProfileStore,
+	resolveActiveProfile,
+	serializeLlmProfileConfig,
 	type LlmProfileStoreV1,
 	type LlmProviderKind,
 	type SerializableLlmProfileConfig,
@@ -98,7 +103,7 @@ export function ProfileConfigPanel({
 	useEffect(() => {
 		let disposed = false
 		const load = async () => {
-			const store = await readProfileStore()
+			const store = await readProfileStore(config)
 			if (disposed) return
 			setProfileStore(store)
 			setSelectedProfileId(store.activeProfileId)
@@ -112,10 +117,13 @@ export function ProfileConfigPanel({
 			if (disposed || areaName !== 'local' || !(LLM_PROFILE_STORE_KEY in changes)) return
 			const next = parseLlmProfileStore(changes[LLM_PROFILE_STORE_KEY].newValue)
 			if (!next) return
-			setProfileStore(next)
+			const resolved = resolveActiveProfile(next).store
+			setProfileStore(resolved)
 			setSelectedProfileId((current) => {
 				if (current === NEW_PROFILE_ID || current === BUILTIN_DEMO_PROFILE_ID) return current
-				return next.profiles.some(({ id }) => id === current) ? current : next.activeProfileId
+				return resolved.profiles.some(({ id }) => id === current)
+					? current
+					: resolved.activeProfileId
 			})
 		}
 		chrome.storage.onChanged.addListener(onChanged)
@@ -123,7 +131,7 @@ export function ProfileConfigPanel({
 			disposed = true
 			chrome.storage.onChanged.removeListener(onChanged)
 		}
-	}, [])
+	}, [config])
 
 	useEffect(() => {
 		if (selectedIsNew) return
@@ -183,7 +191,7 @@ export function ProfileConfigPanel({
 		setError('')
 		try {
 			await onSwitchProfile(selectedProfileId)
-			setProfileStore(await readProfileStore())
+			setProfileStore(await readProfileStore(config))
 		} catch (reason) {
 			setError(toErrorMessage(reason))
 		}
@@ -201,7 +209,7 @@ export function ProfileConfigPanel({
 			}
 
 			if (selectedIsNew) {
-				const latest = await readProfileStore()
+				const latest = await readProfileStore(config)
 				const created = createUserProfile(latest, input)
 				await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: created.store })
 				setProfileStore(created.store)
@@ -219,14 +227,14 @@ export function ProfileConfigPanel({
 					experimentalLlmsTxt: config.experimentalLlmsTxt,
 					experimentalIncludeAllTabs: config.experimentalIncludeAllTabs,
 				})
-				const latest = await readProfileStore()
+				const latest = await readProfileStore(config)
 				const patched = updateUserProfile(latest, selectedProfileId, input)
 				await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: patched })
 				setProfileStore(patched)
 				return
 			}
 
-			const latest = await readProfileStore()
+			const latest = await readProfileStore(config)
 			const updated = updateUserProfile(latest, selectedProfileId, input)
 			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: updated })
 			setProfileStore(updated)
@@ -243,7 +251,7 @@ export function ProfileConfigPanel({
 		setError('')
 		try {
 			if (selectedIsActive) await onSwitchProfile(BUILTIN_DEMO_PROFILE_ID)
-			const latest = await readProfileStore()
+			const latest = await readProfileStore(config)
 			const deleted = deleteUserProfile(latest, selectedProfile.id)
 			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: deleted })
 			setProfileStore(deleted)
@@ -530,9 +538,19 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
 	)
 }
 
-async function readProfileStore(): Promise<LlmProfileStoreV1> {
+async function readProfileStore(fallbackConfig: ExtConfig | null): Promise<LlmProfileStoreV1> {
 	const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
-	return parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY]) ?? createBuiltinDemoStore()
+	const parsed = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
+	if (parsed) return resolveActiveProfile(parsed).store
+	if (!fallbackConfig) return createBuiltinDemoStore()
+
+	const serializable = serializeLlmProfileConfig(fallbackConfig)
+	if (isBareDemoConfig(serializable)) return createBuiltinDemoStore()
+	return createProfileStore({
+		...createMigratedProfile(serializable),
+		id: 'default',
+		name: 'Current API',
+	})
 }
 
 function createEmptyDraft(): ProfileDraft {
@@ -588,7 +606,7 @@ function draftToConfig(draft: ProfileDraft): SerializableLlmProfileConfig {
 		...(draft.apiKey.trim() ? { apiKey: draft.apiKey.trim() } : {}),
 		...(temperature !== undefined ? { temperature } : {}),
 		...(maxRetries !== undefined ? { maxRetries } : {}),
-		...(draft.disableNamedToolChoice ? { disableNamedToolChoice: true } : {}),
+		disableNamedToolChoice: draft.disableNamedToolChoice,
 	}
 }
 
