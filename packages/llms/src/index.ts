@@ -1,17 +1,32 @@
 import { OpenAIClient } from './OpenAIClient'
 import { InvokeError, InvokeErrorTypes } from './errors'
 import type {
+	ImageUrlMessageContentPart,
 	InvokeOptions,
 	InvokeResult,
 	LLMClient,
 	LLMConfig,
 	Message,
+	MessageContent,
+	MessageContentPart,
 	ResolvedLLMConfig,
+	TextMessageContentPart,
 	Tool,
 } from './types'
 
 export { InvokeError, InvokeErrorTypes }
-export type { InvokeOptions, InvokeResult, LLMClient, LLMConfig, Message, Tool }
+export type {
+	ImageUrlMessageContentPart,
+	InvokeOptions,
+	InvokeResult,
+	LLMClient,
+	LLMConfig,
+	Message,
+	MessageContent,
+	MessageContentPart,
+	TextMessageContentPart,
+	Tool,
+}
 
 /**
  * LLM module
