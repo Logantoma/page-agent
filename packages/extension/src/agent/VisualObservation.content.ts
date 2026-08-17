@@ -5,6 +5,10 @@ interface HiddenStyle {
 	element: HTMLElement
 	opacity: string
 	opacityPriority: string
+	visibility: string
+	visibilityPriority: string
+	transition: string
+	transitionPriority: string
 }
 
 let activeToken: string | null = null
@@ -59,10 +63,16 @@ async function prepareVisualObservation(): Promise<{ shouldCapture: boolean; tok
 
 function restoreVisualObservation(token: string | null, force = false): void {
 	if (!force && activeToken && token !== activeToken) return
-	for (const { element, opacity, opacityPriority } of hiddenStyles) {
-		if (!element.isConnected) continue
-		if (opacity) element.style.setProperty('opacity', opacity, opacityPriority)
-		else element.style.removeProperty('opacity')
+	for (const style of hiddenStyles) {
+		if (!style.element.isConnected) continue
+		restoreStyleProperty(style.element, 'opacity', style.opacity, style.opacityPriority)
+		restoreStyleProperty(
+			style.element,
+			'visibility',
+			style.visibility,
+			style.visibilityPriority
+		)
+		restoreStyleProperty(style.element, 'transition', style.transition, style.transitionPriority)
 	}
 	hiddenStyles = []
 	activeToken = null
@@ -83,9 +93,38 @@ function hideAgentOwnedUi(): HiddenStyle[] {
 	return roots.map((element) => {
 		const opacity = element.style.getPropertyValue('opacity')
 		const opacityPriority = element.style.getPropertyPriority('opacity')
+		const visibility = element.style.getPropertyValue('visibility')
+		const visibilityPriority = element.style.getPropertyPriority('visibility')
+		const transition = element.style.getPropertyValue('transition')
+		const transitionPriority = element.style.getPropertyPriority('transition')
+
+		// Capture must never include a half-faded Page Agent overlay. Panel.css uses
+		// `transition: all 0.3s`, so opacity-only hiding can still be visible after
+		// two animation frames. Disable transitions and hard-hide synchronously.
+		element.style.setProperty('transition', 'none', 'important')
 		element.style.setProperty('opacity', '0', 'important')
-		return { element, opacity, opacityPriority }
+		element.style.setProperty('visibility', 'hidden', 'important')
+
+		return {
+			element,
+			opacity,
+			opacityPriority,
+			visibility,
+			visibilityPriority,
+			transition,
+			transitionPriority,
+		}
 	})
+}
+
+function restoreStyleProperty(
+	element: HTMLElement,
+	property: string,
+	value: string,
+	priority: string
+): void {
+	if (value) element.style.setProperty(property, value, priority)
+	else element.style.removeProperty(property)
 }
 
 function isSignificantVisualElement(element: Element): boolean {
