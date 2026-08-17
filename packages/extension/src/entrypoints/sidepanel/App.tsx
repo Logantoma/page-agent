@@ -1,4 +1,4 @@
-import { History, Send, Settings, Square } from 'lucide-react'
+import { Eye, EyeOff, History, Send, Settings, Square } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { HistoryDetail } from '@/components/HistoryDetail'
@@ -26,6 +26,7 @@ type View =
 export default function App() {
 	const [view, setView] = useState<View>({ name: 'chat' })
 	const [inputValue, setInputValue] = useState('')
+	const [visualTogglePending, setVisualTogglePending] = useState(false)
 	const historyRef = useRef<HTMLDivElement>(null)
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -94,6 +95,22 @@ export default function App() {
 		stop()
 	}, [stop])
 
+	const visualObservationEnabled = config?.experimentalVisualObservation ?? false
+	const handleToggleVisualObservation = useCallback(async () => {
+		if (!config || status === 'running' || visualTogglePending) return
+		setVisualTogglePending(true)
+		try {
+			await configure({
+				...config,
+				experimentalVisualObservation: !visualObservationEnabled,
+			})
+		} catch (error) {
+			console.error('[SidePanel] Failed to toggle visual observation:', error)
+		} finally {
+			setVisualTogglePending(false)
+		}
+	}, [config, configure, status, visualObservationEnabled, visualTogglePending])
+
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
 			e.preventDefault()
@@ -151,6 +168,27 @@ export default function App() {
 				</div>
 				<div className="flex items-center gap-1">
 					<StatusDot status={status} />
+					<Button
+						variant={visualObservationEnabled ? 'outline' : 'ghost'}
+						size="sm"
+						onClick={() => void handleToggleVisualObservation()}
+						disabled={!config || isRunning || visualTogglePending}
+						className="h-7 gap-1 px-2 text-[10px] cursor-pointer"
+						aria-pressed={visualObservationEnabled}
+						aria-label={visualObservationEnabled ? '关闭视觉观察' : '开启视觉观察'}
+						title={
+							visualObservationEnabled
+								? '视觉观察已开启，点击关闭'
+								: '视觉观察已关闭，点击开启'
+						}
+					>
+						{visualObservationEnabled ? (
+							<Eye className="size-3" />
+						) : (
+							<EyeOff className="size-3" />
+						)}
+						视觉
+					</Button>
 					<Button
 						variant="ghost"
 						size="icon-sm"
