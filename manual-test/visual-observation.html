@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Observation Probe</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 32px; max-width: 760px; }
+    canvas { border: 1px solid #bbb; border-radius: 8px; display: block; margin: 16px 0; }
+    input, button { font: inherit; padding: 8px 10px; }
+    #result { margin-top: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Visual Observation Probe</h1>
+  <p>Read the verification code shown inside the canvas, enter it below, and submit.</p>
+
+  <canvas id="probe" width="640" height="260"></canvas>
+
+  <label>
+    Verification code
+    <input id="answer" autocomplete="off" />
+  </label>
+  <button id="submit" type="button">Submit</button>
+  <div id="result" aria-live="polite"></div>
+
+  <script>
+    const canvas = document.getElementById('probe')
+    const ctx = canvas.getContext('2d')
+
+    ctx.fillStyle = '#f6f6f6'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.strokeStyle = '#222'
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(90, 190)
+    ctx.lineTo(150, 70)
+    ctx.lineTo(210, 190)
+    ctx.closePath()
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(320, 130, 58, 0, Math.PI * 2)
+    ctx.stroke()
+
+    ctx.fillStyle = '#111'
+    ctx.font = 'bold 34px monospace'
+    ctx.fillText('VISUAL-731', 405, 142)
+
+    document.getElementById('submit').addEventListener('click', () => {
+      const value = document.getElementById('answer').value.trim().toUpperCase()
+      document.getElementById('result').textContent =
+        value === 'VISUAL-731' ? 'PASS: visual probe solved' : 'FAIL: wrong code'
+    })
+  </script>
+</body>
+</html>
