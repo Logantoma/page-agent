@@ -117,13 +117,13 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 	return (
 		<div className="flex flex-col gap-4 p-4 relative">
 			<div className="flex items-center justify-between">
-				<h2 className="text-base font-semibold">Settings</h2>
+				<h2 className="text-base font-semibold">设置</h2>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					onClick={onClose}
 					className="absolute top-2 right-3 cursor-pointer"
-					aria-label="Back"
+					aria-label="返回"
 				>
 					<CornerUpLeft className="size-3.5" />
 				</Button>
@@ -132,11 +132,9 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			{/* User Auth Token Section */}
 			<div className="flex flex-col gap-1.5 p-3 bg-muted/50 rounded-md border">
 				<label htmlFor="user-auth-token" className="text-xs font-medium text-muted-foreground">
-					User Auth Token
+					用户授权令牌
 				</label>
-				<p className="text-[10px] text-muted-foreground mb-1">
-					Give a website the ability to call this extension.
-				</p>
+				<p className="text-[10px] text-muted-foreground mb-1">允许网站调用此扩展。</p>
 				<div className="flex gap-2 items-center">
 					<Input
 						id="user-auth-token"
@@ -146,7 +144,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 								? showToken
 									? userAuthToken
 									: `${userAuthToken.slice(0, 4)}${'•'.repeat(userAuthToken.length - 8)}${userAuthToken.slice(-4)}`
-								: 'Loading...'
+								: '正在加载...'
 						}
 						className="text-xs h-8 font-mono bg-background"
 					/>
@@ -156,7 +154,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 						className="h-8 w-8 shrink-0 cursor-pointer"
 						onClick={() => setShowToken(!showToken)}
 						disabled={!userAuthToken}
-						aria-label={showToken ? 'Hide token' : 'Show token'}
+						aria-label={showToken ? '隐藏令牌' : '显示令牌'}
 						aria-pressed={showToken}
 					>
 						{showToken ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
@@ -167,12 +165,12 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 						className="h-8 w-8 shrink-0 cursor-pointer"
 						onClick={handleCopyToken}
 						disabled={!userAuthToken}
-						aria-label="Copy token"
+						aria-label="复制令牌"
 					>
 						{copied ? <span className="">✓</span> : <Copy className="size-3" />}
 					</Button>
 					<span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-						{copied ? 'Token copied' : ''}
+						{copied ? '令牌已复制' : ''}
 					</span>
 				</div>
 			</div>
@@ -184,13 +182,13 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 				rel="noopener noreferrer"
 				className="flex items-center justify-between p-3 rounded-md border bg-muted/50 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
 			>
-				Manage Page Agent Hub
+				管理 Page Agent Hub
 				<ExternalLink className="size-3" />
 			</a>
 
 			<div className="flex flex-col gap-1.5">
 				<label htmlFor="base-url" className="text-xs text-muted-foreground">
-					Base URL
+					接口地址
 				</label>
 				<Input
 					id="base-url"
@@ -205,21 +203,21 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			{isTestingEndpoint(baseURL) && (
 				<div className="p-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 text-[11px] text-muted-foreground leading-relaxed">
 					<Scale className="size-3 inline-block mr-1 -mt-0.5 text-amber-600" />
-					You are using our testing API. By using this you agree to the{' '}
+					你正在使用测试 API。使用它即表示你同意{' '}
 					<a
 						href="https://github.com/alibaba/page-agent/blob/main/docs/terms-and-privacy.md"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="underline hover:text-foreground"
 					>
-						Terms of Use & Privacy Policy
+						使用条款与隐私政策
 					</a>
 				</div>
 			)}
 
 			<div className="flex flex-col gap-1.5">
 				<label htmlFor="model" className="text-xs text-muted-foreground">
-					Model
+					模型
 				</label>
 				<Input
 					id="model"
@@ -232,7 +230,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 
 			<div className="flex flex-col gap-1.5">
 				<label htmlFor="api-key" className="text-xs text-muted-foreground">
-					API Key
+					API 密钥
 				</label>
 				<div className="flex gap-2 items-center">
 					<Input
@@ -248,7 +246,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 						size="icon"
 						className="h-8 w-8 shrink-0 cursor-pointer"
 						onClick={() => setShowApiKey(!showApiKey)}
-						aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+						aria-label={showApiKey ? '隐藏 API 密钥' : '显示 API 密钥'}
 					>
 						{showApiKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
 					</Button>
@@ -256,14 +254,14 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			</div>
 
 			<div className="flex flex-col gap-1.5">
-				<label className="text-xs text-muted-foreground">Response Language</label>
+				<label className="text-xs text-muted-foreground">回复语言</label>
 				<select
 					value={language ?? ''}
 					onChange={(e) => setLanguage((e.target.value || undefined) as LanguagePreference)}
 					className="h-8 text-xs rounded-md border border-input bg-background px-2 cursor-pointer"
 				>
-					<option value="">System</option>
-					<option value="en-US">English</option>
+					<option value="">跟随系统</option>
+					<option value="en-US">英文</option>
 					<option value="zh-CN">中文</option>
 				</select>
 			</div>
@@ -274,7 +272,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 				onClick={() => setAdvancedOpen(!advancedOpen)}
 				className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer mt-1 font-bold"
 			>
-				Advanced
+				高级设置
 				{advancedOpen ? <FoldVertical className="size-3" /> : <UnfoldVertical className="size-3" />}
 			</button>
 
@@ -282,7 +280,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 				<>
 					<div className="flex flex-col gap-1.5">
 						<label htmlFor="max-steps" className="text-xs text-muted-foreground">
-							Max Steps
+							最大步骤数
 						</label>
 						<Input
 							id="max-steps"
@@ -297,9 +295,9 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<label className="text-xs text-muted-foreground">System Instruction</label>
+						<label className="text-xs text-muted-foreground">系统指令</label>
 						<textarea
-							placeholder="Additional instructions for the agent..."
+							placeholder="给 Agent 的附加指令..."
 							value={systemInstruction}
 							onChange={(e) => setSystemInstruction(e.target.value)}
 							rows={3}
@@ -308,17 +306,17 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 					</div>
 
 					<label className="flex items-center justify-between cursor-pointer">
-						<span className="text-xs text-muted-foreground">Disable named tool_choice</span>
+						<span className="text-xs text-muted-foreground">禁用指定工具 tool_choice</span>
 						<Switch checked={disableNamedToolChoice} onCheckedChange={setDisableNamedToolChoice} />
 					</label>
 
 					<label className="flex items-center justify-between cursor-pointer">
-						<span className="text-xs text-muted-foreground">Experimental llms.txt support</span>
+						<span className="text-xs text-muted-foreground">实验性 llms.txt 支持</span>
 						<Switch checked={experimentalLlmsTxt} onCheckedChange={setExperimentalLlmsTxt} />
 					</label>
 
 					<label className="flex items-center justify-between cursor-pointer">
-						<span className="text-xs text-muted-foreground">Experimental include all tabs</span>
+						<span className="text-xs text-muted-foreground">实验性包含所有标签页</span>
 						<Switch
 							checked={experimentalIncludeAllTabs}
 							onCheckedChange={setExperimentalIncludeAllTabs}
@@ -329,14 +327,14 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 
 			<div className="flex gap-2 mt-2">
 				<Button variant="outline" onClick={onClose} className="flex-1 h-8 text-xs cursor-pointer">
-					Cancel
+					取消
 				</Button>
 				<Button
 					onClick={handleSave}
 					disabled={saving}
 					className="flex-1 h-8 text-xs cursor-pointer"
 				>
-					{saving ? <Loader2 className="size-3 animate-spin" /> : 'Save'}
+					{saving ? <Loader2 className="size-3 animate-spin" /> : '保存'}
 				</Button>
 			</div>
 

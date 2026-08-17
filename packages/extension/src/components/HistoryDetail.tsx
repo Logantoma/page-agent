@@ -24,7 +24,7 @@ export function HistoryDetail({
 	if (!session) {
 		return (
 			<div className="flex items-center justify-center h-screen text-xs text-muted-foreground">
-				Loading...
+				正在加载...
 			</div>
 		)
 	}
@@ -36,12 +36,12 @@ export function HistoryDetail({
 				<Button variant="ghost" size="icon-sm" onClick={onBack} className="cursor-pointer">
 					<ArrowLeft className="size-3.5" />
 				</Button>
-				<span className="text-sm font-medium truncate">History</span>
+				<span className="text-sm font-medium truncate">历史记录</span>
 			</header>
 
 			{/* Task */}
 			<div className="border-b px-3 py-2 bg-muted/30">
-				<div className="text-[10px] text-muted-foreground uppercase tracking-wide">Task</div>
+				<div className="text-[10px] text-muted-foreground uppercase tracking-wide">任务</div>
 				<div className="text-xs font-medium" title={session.task}>
 					{session.task}
 				</div>
@@ -52,7 +52,7 @@ export function HistoryDetail({
 						className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						<RotateCcw className="size-3" />
-						Run again
+						再次执行
 					</button>
 					<button
 						type="button"
@@ -63,7 +63,7 @@ export function HistoryDetail({
 						className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
 					>
 						<Trash2 className="size-3" />
-						Delete
+						删除
 					</button>
 				</div>
 			</div>

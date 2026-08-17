@@ -40,18 +40,18 @@ export class ErrorBoundary extends Component<Props, State> {
 		return (
 			<div className="flex flex-col items-center justify-center h-screen bg-background p-6 text-center">
 				<AlertTriangle className="size-12 text-destructive mb-4" />
-				<h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
+				<h2 className="text-lg font-semibold mb-2">发生错误</h2>
 				<p className="text-sm text-muted-foreground mb-4 max-w-xs">
-					{this.state.error?.message || 'An unexpected error occurred'}
+					{this.state.error?.message || '发生了未预期的错误'}
 				</p>
 				<div className="flex gap-2">
 					<Button variant="outline" size="sm" onClick={this.handleResetConfig}>
 						<Eraser className="size-3.5 mr-2" />
-						Reset Config
+						重置配置
 					</Button>
 					<Button variant="outline" size="sm" onClick={this.handleReload}>
 						<RotateCcw className="size-3.5 mr-2" />
-						Reload Panel
+						重新加载面板
 					</Button>
 				</div>
 			</div>

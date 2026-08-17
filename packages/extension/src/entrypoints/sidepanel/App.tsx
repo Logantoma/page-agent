@@ -1,9 +1,9 @@
 import { History, Send, Settings, Square } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { ProfileConfigPanel } from '@/components/ProfileConfigPanel'
 import { HistoryDetail } from '@/components/HistoryDetail'
 import { HistoryList } from '@/components/HistoryList'
+import { ProfileConfigPanel } from '@/components/ProfileConfigPanel'
 import { ActivityCard, EventCard } from '@/components/cards'
 import { EmptyState, Logo, MotionOverlay, StatusDot } from '@/components/misc'
 import { Button } from '@/components/ui/button'
@@ -156,8 +156,8 @@ export default function App() {
 						size="icon-sm"
 						onClick={() => setView({ name: 'history' })}
 						className="cursor-pointer"
-						aria-label="History"
-						title="History"
+						aria-label="历史记录"
+						title="历史记录"
 					>
 						<History className="size-3.5" />
 					</Button>
@@ -166,8 +166,8 @@ export default function App() {
 						size="icon-sm"
 						onClick={() => setView({ name: 'config' })}
 						className="cursor-pointer"
-						aria-label="Settings"
-						title="Settings"
+						aria-label="设置"
+						title="设置"
 					>
 						<Settings className="size-3.5" />
 					</Button>
@@ -179,7 +179,7 @@ export default function App() {
 				{/* Current task */}
 				{currentTask && (
 					<div className="border-b px-3 py-2 bg-muted/30">
-						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">Task</div>
+						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">任务</div>
 						<div className="text-xs font-medium truncate" title={currentTask}>
 							{currentTask}
 						</div>
@@ -204,7 +204,7 @@ export default function App() {
 				<InputGroup className="relative rounded-lg">
 					<InputGroupTextarea
 						ref={textareaRef}
-						placeholder="Describe your task... (Enter to send)"
+						placeholder="描述要执行的任务...（按 Enter 发送）"
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
@@ -218,8 +218,8 @@ export default function App() {
 								variant="destructive"
 								onClick={handleStop}
 								className="size-7"
-								aria-label="Stop task"
-								title="Stop task"
+								aria-label="停止任务"
+								title="停止任务"
 							>
 								<Square className="size-3" />
 							</InputGroupButton>
@@ -230,8 +230,8 @@ export default function App() {
 								onClick={() => handleSubmit()}
 								disabled={!inputValue.trim()}
 								className="size-7 cursor-pointer"
-								aria-label="Send"
-								title="Send"
+								aria-label="发送"
+								title="发送"
 							>
 								<Send className="size-3" />
 							</InputGroupButton>

@@ -24,9 +24,9 @@ export default function App() {
 	const isRunning = status === 'running'
 	const WsIcon = wsState === 'connected' ? PlugZap : wsState === 'connecting' ? Plug : Unplug
 	const wsLabel = {
-		connected: 'Connected',
-		connecting: 'Connecting…',
-		disconnected: new URLSearchParams(location.search).get('ws') ? 'Disconnected' : 'No connection',
+		connected: '已连接',
+		connecting: '连接中...',
+		disconnected: new URLSearchParams(location.search).get('ws') ? '已断开连接' : '未连接',
 	}[wsState]
 
 	return (
@@ -42,25 +42,24 @@ export default function App() {
 					<Logo className="size-5" />
 					<span className="text-sm font-semibold tracking-tight">Page Agent Hub</span>
 					<span className="text-[9px] font-medium uppercase tracking-wider text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded px-1.5 py-0.5">
-						Beta
+						测试版
 					</span>
 				</a>
 
 				<div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
 					<div className="text-xs text-muted-foreground leading-relaxed space-y-2">
 						<p>
-							Page Agent Hub lets local apps (e.g. MCP servers) control the Page Agent extension via
-							WebSocket.
+							Page Agent Hub 允许本地应用（例如 MCP 服务器）通过 WebSocket 控制 Page Agent 扩展。
 						</p>
 						<p>
-							Check out the official{' '}
+							查看官方的{' '}
 							<a
 								href="https://github.com/alibaba/page-agent/tree/main/packages/mcp"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="underline hover:text-foreground"
 							>
-								MCP server package
+								MCP 服务器包
 							</a>
 							.
 						</p>
@@ -101,7 +100,7 @@ export default function App() {
 						{isRunning && (
 							<Button variant="destructive" size="sm" onClick={stop} className="h-7 text-xs">
 								<Square className="size-3 mr-1" />
-								Stop
+								停止
 							</Button>
 						)}
 					</div>
@@ -111,7 +110,7 @@ export default function App() {
 				{currentTask && (
 					<div className="border-b px-5 py-2 bg-muted/30">
 						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-							Current Task
+							当前任务
 						</div>
 						<div className="text-sm font-medium truncate" title={currentTask}>
 							{currentTask}
@@ -125,9 +124,7 @@ export default function App() {
 						<div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
 							<WsIcon className="size-10 opacity-30" />
 							<p className="text-sm">
-								{wsState === 'connected'
-									? 'Waiting for task from external caller…'
-									: 'No active session'}
+								{wsState === 'connected' ? '正在等待外部调用方发送任务...' : '当前没有活动会话'}
 							</p>
 						</div>
 					)}
@@ -160,13 +157,13 @@ function HubConfig() {
 	return (
 		<div>
 			<h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-wider mb-2">
-				Config
+				配置
 			</h3>
 			<div className="group/hub relative">
 				<label
 					className={`flex items-center justify-between p-3 rounded-md border cursor-pointer text-xs ${allowAll ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/50 text-muted-foreground'}`}
 				>
-					Auto-approve connections
+					自动批准连接
 					<Switch
 						checked={allowAll}
 						onCheckedChange={toggle}
@@ -178,10 +175,11 @@ function HubConfig() {
 				<div className="group-hover/hub:visible group-hover/hub:opacity-100 transition-opacity duration-150  left-0 right-0 top-full z-10 pt-2">
 					<div className="relative p-2.5 rounded-md border border-border bg-background/60 backdrop-blur-md shadow-2xl text-muted-foreground text-xs leading-relaxed">
 						<div className="absolute -top-1.5 left-5 size-3 rotate-45 rounded-[1px] border-l border-t border-border bg-background/60 backdrop-blur-md" />
-						By default, each connection requires your approval before running tasks. <br />
-						Enable this to skip per-session approval.
+						默认情况下，每个连接在执行任务前都需要你的批准。
 						<br />
-						<span className="font-semibold">* Use with caution!</span>
+						启用后将跳过每个会话的批准。
+						<br />
+						<span className="font-semibold">* 请谨慎使用。</span>
 					</div>
 				</div>
 			</div>
@@ -199,36 +197,36 @@ function ProtocolDocsCollapsible() {
 				onClick={() => setOpen(!open)}
 				className="flex items-center gap-1 text-[11px] font-semibold text-foreground/80 uppercase tracking-wider cursor-pointer"
 			>
-				Docs
+				文档
 				{open ? <FoldVertical className="size-3" /> : <UnfoldVertical className="size-3" />}
 			</button>
 
 			{open && (
 				<div className="mt-3 space-y-4 text-xs text-muted-foreground">
 					<p className="text-[10px]">
-						Connect via <code className="text-[10px]">hub.html?ws=PORT</code>
+						通过 <code className="text-[10px]">hub.html?ws=PORT</code> 连接
 					</p>
 
 					<section>
-						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">Flow</h4>
+						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">流程</h4>
 						<ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
-							<li>Hub opens WS to caller's server</li>
+							<li>Hub 与调用方服务器建立 WebSocket 连接</li>
 							<li>
-								Sends <code className="text-[10px]">ready</code>
+								发送 <code className="text-[10px]">ready</code>
 							</li>
 							<li>
-								Caller sends <code className="text-[10px]">execute</code> with task
+								调用方使用任务发送 <code className="text-[10px]">execute</code>
 							</li>
-							<li>Hub runs agent, streams events</li>
+							<li>Hub 运行 Agent 并流式传输事件</li>
 							<li>
-								Hub sends <code className="text-[10px]">result</code> or{' '}
+								Hub 发送 <code className="text-[10px]">result</code> 或{' '}
 								<code className="text-[10px]">error</code>
 							</li>
 						</ol>
 					</section>
 
 					<section>
-						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">Caller → Hub</h4>
+						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">调用方 → Hub</h4>
 						<pre className="bg-muted/50 rounded-md p-3 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
 							{`{ type: "execute", task: string, config?: object }
 { type: "stop" }`}
@@ -236,7 +234,7 @@ function ProtocolDocsCollapsible() {
 					</section>
 
 					<section>
-						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">Hub → Caller</h4>
+						<h4 className="text-[11px] font-medium text-foreground/60 mb-1.5">Hub → 调用方</h4>
 						<pre className="bg-muted/50 rounded-md p-3 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">
 							{`{ type: "ready" }
 { type: "result", success: boolean, data: string }

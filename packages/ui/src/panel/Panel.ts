@@ -70,7 +70,7 @@ export class Panel {
 	constructor(agent: PanelAgentAdapter, config: PanelConfig = {}) {
 		this.#agent = agent
 		this.#config = config
-		this.#i18n = new I18n(config.language ?? 'en-US')
+		this.#i18n = new I18n(config.language ?? 'zh-CN')
 
 		// Set up askUser callback on agent
 		this.#agent.onAskUser = (question, options) => this.#askUser(question, options?.signal)

@@ -18,11 +18,11 @@ export function StatusDot({ status }: { status: AgentStatus }) {
 	}[status]
 
 	const label = {
-		idle: 'Ready',
-		running: 'Running',
-		completed: 'Done',
-		error: 'Error',
-		stopped: 'Stopped',
+		idle: '就绪',
+		running: '运行中',
+		completed: '已完成',
+		error: '出错',
+		stopped: '已停止',
 	}[status]
 
 	return (
@@ -106,10 +106,10 @@ export function EmptyState() {
 				<TypingAnimation
 					className="text-sm text-muted-foreground"
 					words={[
-						'Enter a task to automate this page',
-						'Execute multi-page tasks',
-						'Call this extension from your web page',
-						'Use this extension in your own agents',
+						'输入任务，让 Agent 自动操作当前页面',
+						'执行跨页面的多步骤任务',
+						'从网页中调用此扩展',
+						'在你的 Agent 中使用此扩展',
 					]}
 					cursorStyle="underscore"
 					loop
@@ -136,7 +136,7 @@ export function EmptyState() {
 					target="_blank"
 					rel="noopener noreferrer"
 					className="hover:text-foreground transition-colors"
-					title="Documentation"
+					title="文档"
 				>
 					<BookOpen className="size-4" />
 				</a>
@@ -145,7 +145,7 @@ export function EmptyState() {
 					target="_blank"
 					rel="noopener noreferrer"
 					className="hover:text-foreground transition-colors"
-					title="Website"
+					title="官网"
 				>
 					<Globe className="size-4" />
 				</a>

@@ -50,8 +50,8 @@ export class InPageLauncher {
 		element.id = LAUNCHER_ID
 		element.type = 'button'
 		element.textContent = 'PA'
-		element.title = 'Open Page Agent'
-		element.setAttribute('aria-label', 'Open Page Agent')
+		element.title = '打开 Page Agent'
+		element.setAttribute('aria-label', '打开 Page Agent')
 		element.setAttribute('data-browser-use-ignore', 'true')
 		element.setAttribute('data-page-agent-ignore', 'true')
 		Object.assign(element.style, {
