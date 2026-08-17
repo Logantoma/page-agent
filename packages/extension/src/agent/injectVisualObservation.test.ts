@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { injectVisualObservation } from './injectVisualObservation'
 
 describe('injectVisualObservation', () => {
-	it('attaches an image to the last user message without mutating the original body', () => {
+	it('attaches a high-detail image to the last user message without mutating the original body', () => {
 		const body = {
 			model: 'vision-model',
 			messages: [
@@ -20,7 +20,7 @@ describe('injectVisualObservation', () => {
 			{ type: 'text', text: 'browser state' },
 			{
 				type: 'image_url',
-				image_url: { url: 'data:image/jpeg;base64,abc', detail: 'low' },
+				image_url: { url: 'data:image/jpeg;base64,abc', detail: 'high' },
 			},
 			expect.objectContaining({ type: 'text' }),
 		])
