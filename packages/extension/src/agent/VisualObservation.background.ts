@@ -10,7 +10,7 @@ interface PrepareResponse {
 
 export function handleVisualObservationMessage(
 	message: unknown,
-	_sendResponseSender: chrome.runtime.MessageSender,
+	_sender: chrome.runtime.MessageSender,
 	sendResponse: (response: unknown) => void
 ): true | undefined {
 	if (!isRecord(message) || message.type !== CAPTURE_MESSAGE || typeof message.tabId !== 'number') {
@@ -27,8 +27,7 @@ async function captureActiveTab(tabId: number): Promise<Record<string, unknown>>
 	const tab = await chrome.tabs.get(tabId)
 	if (tab.windowId == null) return { success: true, skipped: 'missing_window' }
 
-	const [activeTab] = await chrome.tabs.query({ active: true, windowId: tab.windowId })
-	if (!activeTab || activeTab.id !== tabId) {
+	if (!(await isActiveTarget(tab.windowId, tabId))) {
 		return { success: true, skipped: 'target_not_active' }
 	}
 
@@ -46,6 +45,12 @@ async function captureActiveTab(tabId: number): Promise<Record<string, unknown>>
 		}
 		token = prepared.token
 
+		// The user may switch tabs while the content script waits for paint frames.
+		// Never capture a different active tab by accident.
+		if (!(await isActiveTarget(tab.windowId, tabId))) {
+			return { success: true, skipped: 'target_changed_before_capture' }
+		}
+
 		const imageUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
 			format: 'jpeg',
 			quality: 70,
@@ -58,6 +63,11 @@ async function captureActiveTab(tabId: number): Promise<Record<string, unknown>>
 				.catch(() => undefined)
 		}
 	}
+}
+
+async function isActiveTarget(windowId: number, tabId: number): Promise<boolean> {
+	const [activeTab] = await chrome.tabs.query({ active: true, windowId })
+	return activeTab?.id === tabId
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
