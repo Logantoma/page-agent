@@ -28,8 +28,9 @@ export class InPageAgentShell {
 	#createAgent: AgentFactory
 	#createPanel: PanelFactory
 	#onFullscreenChange = () => this.#syncMountTarget()
-	#onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>) => {
-		if (!hasRelevantConfigChange(changes) || this.#disposed || !this.#agent) return
+	#onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+		if (areaName !== 'local' || !hasRelevantConfigChange(changes) || this.#disposed || !this.#agent)
+			return
 		if (this.#agent.status === 'running') {
 			this.#pendingConfigRecycle = true
 			return
@@ -40,6 +41,7 @@ export class InPageAgentShell {
 		if (this.#pendingConfigRecycle && this.#agent?.status !== 'running') this.#recycleAgent()
 	}
 	#onAgentDispose = () => {
+		this.#pendingConfigRecycle = false
 		this.#agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
 		this.#panel = null
 		this.#agent = null

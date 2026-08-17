@@ -9,6 +9,7 @@ import {
 	parseLlmProfileStore,
 	resolveActiveProfile,
 	serializeLlmProfileConfig,
+	setActiveProfile,
 	updateActiveProfileConfig,
 } from './LlmProfileStore'
 import { DEMO_CONFIG, LEGACY_TESTING_ENDPOINTS } from './constants'
@@ -116,6 +117,27 @@ describe('LlmProfileStore', () => {
 		expect(inferProviderKind('https://api.deepseek.com')).toBe('deepseek')
 		expect(inferProviderKind('https://evil-deepseek.com')).toBe('custom')
 		expect(inferProviderKind('https://evil-siliconflow.cn')).toBe('custom')
+	})
+
+	it('validates explicit active-profile switches', () => {
+		const store = {
+			version: 1 as const,
+			activeProfileId: 'custom',
+			profiles: [
+				{
+					id: 'custom',
+					name: 'Custom',
+					provider: 'custom' as const,
+					config: { baseURL: 'https://example.com', model: 'model' },
+				},
+			],
+		}
+
+		expect(setActiveProfile(store, BUILTIN_DEMO_PROFILE_ID)).toMatchObject({
+			activeProfileId: BUILTIN_DEMO_PROFILE_ID,
+		})
+		expect(setActiveProfile(store, 'custom')).toBe(store)
+		expect(() => setActiveProfile(store, 'missing')).toThrow('Unknown LLM profile')
 	})
 
 	it('repairs an empty store to the derived built-in demo profile', () => {

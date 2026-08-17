@@ -45,6 +45,8 @@ export function useAgent(): UseAgentResult {
 	const configRef = useRef<ExtConfig | null>(null)
 	const pendingConfigRecycleRef = useRef(false)
 	const reloadRef = useRef<() => Promise<void>>(async () => {})
+	const configTransitionRef = useRef<Promise<void>>(Promise.resolve())
+	const replacementReadyRef = useRef<(() => void) | null>(null)
 
 	const ensureIdle = () => {
 		if (agentRef.current?.status === 'running')
@@ -54,8 +56,11 @@ export function useAgent(): UseAgentResult {
 	const reloadEffectiveConfig = useCallback(async () => {
 		const nextConfig = await loadAgentConfig()
 		if (!sameEffectiveConfig(configRef.current, nextConfig)) {
-			configRef.current = nextConfig
-			setConfig(nextConfig)
+			await new Promise<void>((resolve) => {
+				replacementReadyRef.current = resolve
+				configRef.current = nextConfig
+				setConfig(nextConfig)
+			})
 		}
 	}, [])
 	reloadRef.current = reloadEffectiveConfig
@@ -65,13 +70,16 @@ export function useAgent(): UseAgentResult {
 	}, [reloadEffectiveConfig])
 
 	useEffect(() => {
-		const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>) => {
-			if (!hasRelevantConfigChange(changes)) return
+		const onStorageChanged = (
+			changes: Record<string, chrome.storage.StorageChange>,
+			areaName: string
+		) => {
+			if (areaName !== 'local' || !hasRelevantConfigChange(changes)) return
 			if (agentRef.current?.status === 'running') {
 				pendingConfigRecycleRef.current = true
 				return
 			}
-			void reloadRef.current()
+			configTransitionRef.current = reloadRef.current()
 		}
 		chrome.storage.onChanged.addListener(onStorageChanged)
 		return () => chrome.storage.onChanged.removeListener(onStorageChanged)
@@ -86,6 +94,8 @@ export function useAgent(): UseAgentResult {
 			instructions: systemInstruction ? { system: systemInstruction } : undefined,
 		})
 		agentRef.current = agent
+		replacementReadyRef.current?.()
+		replacementReadyRef.current = null
 
 		const handleStatusChange = (e: Event) => {
 			const newStatus = agent.status as AgentStatus
@@ -94,7 +104,7 @@ export function useAgent(): UseAgentResult {
 				setActivity(null)
 				if (pendingConfigRecycleRef.current) {
 					pendingConfigRecycleRef.current = false
-					void reloadRef.current()
+					configTransitionRef.current = reloadRef.current()
 				}
 			}
 		}
@@ -121,6 +131,7 @@ export function useAgent(): UseAgentResult {
 	}, [config])
 
 	const execute = useCallback(async (task: string) => {
+		await configTransitionRef.current
 		const agent = agentRef.current
 		if (!agent) throw new Error('Agent not initialized')
 
@@ -154,20 +165,20 @@ export function useAgent(): UseAgentResult {
 						id: 'default',
 						name: 'Default API',
 					})
-			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: profileStore })
-			if (language) {
-				await chrome.storage.local.set({ language })
-			} else {
-				await chrome.storage.local.remove('language')
-			}
 			const advancedConfig: AdvancedConfig = {
 				maxSteps,
 				systemInstruction,
 				experimentalLlmsTxt,
 				experimentalIncludeAllTabs,
 			}
-			await chrome.storage.local.set({ advancedConfig })
-			await reloadEffectiveConfig()
+			ensureIdle()
+			await chrome.storage.local.set({
+				[LLM_PROFILE_STORE_KEY]: profileStore,
+				language: language ?? null,
+				advancedConfig,
+			})
+			configTransitionRef.current = reloadEffectiveConfig()
+			await configTransitionRef.current
 		},
 		[]
 	)
@@ -181,7 +192,8 @@ export function useAgent(): UseAgentResult {
 			if (!store) throw new Error('LLM profile store is unavailable')
 			const nextStore = setActiveProfile(store, profileId)
 			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: nextStore })
-			await reloadEffectiveConfig()
+			configTransitionRef.current = reloadEffectiveConfig()
+			await configTransitionRef.current
 		},
 		[reloadEffectiveConfig]
 	)

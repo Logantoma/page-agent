@@ -62,7 +62,7 @@ export async function loadAgentConfig(): Promise<ExtConfig> {
 		'language',
 		'advancedConfig',
 	])
-	const language = (result.language as SupportedLanguage) || undefined
+	const language = (result.language as SupportedLanguage | null) || undefined
 	const storedAdvancedConfig =
 		(result.advancedConfig as AdvancedConfig & {
 			disableNamedToolChoice?: boolean

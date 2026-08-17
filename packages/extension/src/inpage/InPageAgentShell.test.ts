@@ -194,7 +194,9 @@ describe('InPageAgentShell', () => {
 	})
 
 	it('recycles an idle Agent and Panel when relevant storage changes', async () => {
-		const listeners = new Set<(changes: Record<string, chrome.storage.StorageChange>) => void>()
+		const listeners = new Set<
+			(changes: Record<string, chrome.storage.StorageChange>, area: string) => void
+		>()
 		vi.stubGlobal('chrome', {
 			storage: {
 				onChanged: {
@@ -213,7 +215,7 @@ describe('InPageAgentShell', () => {
 		await shell.toggle()
 
 		listeners.forEach((listener) =>
-			listener({ llmProfileStoreV1: {} as chrome.storage.StorageChange })
+			listener({ llmProfileStoreV1: {} as chrome.storage.StorageChange }, 'local')
 		)
 		expect(panel.dispose).toHaveBeenCalledOnce()
 		expect(agent.dispose).toHaveBeenCalledOnce()
@@ -222,7 +224,9 @@ describe('InPageAgentShell', () => {
 	})
 
 	it('defers repeated storage changes until a running Agent reaches a terminal status', async () => {
-		const listeners = new Set<(changes: Record<string, chrome.storage.StorageChange>) => void>()
+		const listeners = new Set<
+			(changes: Record<string, chrome.storage.StorageChange>, area: string) => void
+		>()
 		vi.stubGlobal('chrome', {
 			storage: {
 				onChanged: {
@@ -240,9 +244,11 @@ describe('InPageAgentShell', () => {
 		})
 		await shell.toggle()
 		agent.setStatus('running')
-		listeners.forEach((listener) => listener({ language: {} as chrome.storage.StorageChange }))
 		listeners.forEach((listener) =>
-			listener({ advancedConfig: {} as chrome.storage.StorageChange })
+			listener({ language: {} as chrome.storage.StorageChange }, 'local')
+		)
+		listeners.forEach((listener) =>
+			listener({ advancedConfig: {} as chrome.storage.StorageChange }, 'local')
 		)
 		expect(agent.dispose).not.toHaveBeenCalled()
 
