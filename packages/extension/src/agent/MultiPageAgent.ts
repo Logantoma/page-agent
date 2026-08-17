@@ -69,7 +69,7 @@ export class MultiPageAgent extends PageAgentCore {
 				const transformed = upstreamTransformRequestBody?.(requestBody)
 				const effectiveBody = transformed ?? requestBody
 				if (!experimentalVisualObservation || !latestVisualObservation) return effectiveBody
-				return injectVisualObservation(effectiveBody, latestVisualObservation, 'low')
+				return injectVisualObservation(effectiveBody, latestVisualObservation)
 			},
 
 			onBeforeTask: async (agent) => {
