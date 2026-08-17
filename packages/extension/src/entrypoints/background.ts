@@ -1,5 +1,6 @@
 import { handlePageControlMessage } from '@/agent/RemotePageController.background'
 import { handleTabControlMessage } from '@/agent/TabsController.background'
+import { handleVisualObservationMessage } from '@/agent/VisualObservation.background'
 
 export default defineBackground(() => {
 	console.log('[Background] Service Worker started')
@@ -20,6 +21,8 @@ export default defineBackground(() => {
 			return handleTabControlMessage(message, sender, sendResponse)
 		} else if (message.type === 'PAGE_CONTROL') {
 			return handlePageControlMessage(message, sender, sendResponse)
+		} else if (message.type === 'VISUAL_OBSERVATION_CAPTURE') {
+			return handleVisualObservationMessage(message, sender, sendResponse)
 		} else {
 			sendResponse({ error: 'Unknown message type' })
 			return
