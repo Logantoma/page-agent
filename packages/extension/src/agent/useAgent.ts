@@ -44,8 +44,9 @@ export function useAgent(): UseAgentResult {
 	const [config, setConfig] = useState<ExtConfig | null>(null)
 	const configRef = useRef<ExtConfig | null>(null)
 	const pendingConfigRecycleRef = useRef(false)
-	const reloadRef = useRef<() => Promise<void>>(async () => {})
-	const configTransitionRef = useRef<Promise<void>>(Promise.resolve())
+	const scheduleTransitionRef = useRef<() => Promise<void>>(async () => {})
+	const transitionInFlightRef = useRef<Promise<void> | null>(null)
+	const transitionDirtyRef = useRef(false)
 	const replacementReadyRef = useRef<(() => void) | null>(null)
 
 	const ensureIdle = () => {
@@ -53,21 +54,34 @@ export function useAgent(): UseAgentResult {
 			throw new Error('Cannot change configuration while Agent is running')
 	}
 
-	const reloadEffectiveConfig = useCallback(async () => {
-		const nextConfig = await loadAgentConfig()
-		if (!sameEffectiveConfig(configRef.current, nextConfig)) {
-			await new Promise<void>((resolve) => {
-				replacementReadyRef.current = resolve
-				configRef.current = nextConfig
-				setConfig(nextConfig)
-			})
-		}
+	const scheduleConfigTransition = useCallback((): Promise<void> => {
+		transitionDirtyRef.current = true
+		if (transitionInFlightRef.current) return transitionInFlightRef.current
+
+		const transition = (async () => {
+			try {
+				while (transitionDirtyRef.current) {
+					transitionDirtyRef.current = false
+					const nextConfig = await loadAgentConfig()
+					if (sameEffectiveConfig(configRef.current, nextConfig)) continue
+					await new Promise<void>((resolve) => {
+						replacementReadyRef.current = resolve
+						configRef.current = nextConfig
+						setConfig(nextConfig)
+					})
+				}
+			} finally {
+				transitionInFlightRef.current = null
+			}
+		})()
+		transitionInFlightRef.current = transition
+		return transition
 	}, [])
-	reloadRef.current = reloadEffectiveConfig
+	scheduleTransitionRef.current = scheduleConfigTransition
 
 	useEffect(() => {
-		void reloadEffectiveConfig()
-	}, [reloadEffectiveConfig])
+		void scheduleConfigTransition()
+	}, [scheduleConfigTransition])
 
 	useEffect(() => {
 		const onStorageChanged = (
@@ -79,7 +93,7 @@ export function useAgent(): UseAgentResult {
 				pendingConfigRecycleRef.current = true
 				return
 			}
-			configTransitionRef.current = reloadRef.current()
+			void scheduleTransitionRef.current()
 		}
 		chrome.storage.onChanged.addListener(onStorageChanged)
 		return () => chrome.storage.onChanged.removeListener(onStorageChanged)
@@ -104,7 +118,7 @@ export function useAgent(): UseAgentResult {
 				setActivity(null)
 				if (pendingConfigRecycleRef.current) {
 					pendingConfigRecycleRef.current = false
-					configTransitionRef.current = reloadRef.current()
+					void scheduleTransitionRef.current()
 				}
 			}
 		}
@@ -123,6 +137,8 @@ export function useAgent(): UseAgentResult {
 		agent.addEventListener('activity', handleActivity)
 
 		return () => {
+			replacementReadyRef.current?.()
+			replacementReadyRef.current = null
 			agent.removeEventListener('statuschange', handleStatusChange)
 			agent.removeEventListener('historychange', handleHistoryChange)
 			agent.removeEventListener('activity', handleActivity)
@@ -131,7 +147,8 @@ export function useAgent(): UseAgentResult {
 	}, [config])
 
 	const execute = useCallback(async (task: string) => {
-		await configTransitionRef.current
+		const transition = transitionInFlightRef.current
+		if (transition) await transition
 		const agent = agentRef.current
 		if (!agent) throw new Error('Agent not initialized')
 
@@ -177,8 +194,7 @@ export function useAgent(): UseAgentResult {
 				language: language ?? null,
 				advancedConfig,
 			})
-			configTransitionRef.current = reloadEffectiveConfig()
-			await configTransitionRef.current
+			await scheduleConfigTransition()
 		},
 		[]
 	)
@@ -192,10 +208,9 @@ export function useAgent(): UseAgentResult {
 			if (!store) throw new Error('LLM profile store is unavailable')
 			const nextStore = setActiveProfile(store, profileId)
 			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: nextStore })
-			configTransitionRef.current = reloadEffectiveConfig()
-			await configTransitionRef.current
+			await scheduleConfigTransition()
 		},
-		[reloadEffectiveConfig]
+		[scheduleConfigTransition]
 	)
 
 	return {
