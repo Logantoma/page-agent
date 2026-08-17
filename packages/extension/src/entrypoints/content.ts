@@ -1,4 +1,5 @@
 import { initPageController } from '@/agent/RemotePageController.content'
+import { initVisualObservationContent } from '@/agent/VisualObservation.content'
 import { InPageAgentShell } from '@/inpage/InPageAgentShell'
 
 // import { DEMO_CONFIG } from '@/agent/constants'
@@ -12,8 +13,12 @@ export default defineContentScript({
 	main(ctx) {
 		console.debug(`${DEBUG_PREFIX} Loaded on ${window.location.href}`)
 		initPageController()
+		const disposeVisualObservation = initVisualObservationContent()
 		const inPageShell = new InPageAgentShell()
-		ctx.onInvalidated(() => inPageShell.dispose())
+		ctx.onInvalidated(() => {
+			disposeVisualObservation()
+			inPageShell.dispose()
+		})
 
 		// if auth token matches, expose agent to page
 		chrome.storage.local.get('PageAgentExtUserAuthToken').then((result) => {
