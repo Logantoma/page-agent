@@ -224,7 +224,8 @@ export function useAgent(): UseAgentResult {
 					systemInstruction,
 					experimentalLlmsTxt,
 					experimentalIncludeAllTabs,
-					experimentalVisualObservation,
+					experimentalVisualObservation:
+						experimentalVisualObservation ?? configRef.current?.experimentalVisualObservation,
 				}
 				ensureIdle()
 				await chrome.storage.local.set({
