@@ -4,6 +4,14 @@
 import type { AgentActivity, AgentStatus, ExecutionResult, HistoricalEvent } from '@page-agent/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import {
+	LLM_PROFILE_STORE_KEY,
+	createMigratedProfile,
+	createProfileStore,
+	parseLlmProfileStore,
+	serializeLlmProfileConfig,
+	updateActiveProfileConfig,
+} from './LlmProfileStore'
 import { MultiPageAgent } from './MultiPageAgent'
 import {
 	type AdvancedConfig,
@@ -96,10 +104,19 @@ export function useAgent(): UseAgentResult {
 			systemInstruction,
 			experimentalLlmsTxt,
 			experimentalIncludeAllTabs,
-			disableNamedToolChoice,
 			...llmConfig
 		}: ExtConfig) => {
-			await chrome.storage.local.set({ llmConfig })
+			const result = await chrome.storage.local.get(LLM_PROFILE_STORE_KEY)
+			const storedProfileStore = parseLlmProfileStore(result[LLM_PROFILE_STORE_KEY])
+			const profileConfig = serializeLlmProfileConfig(llmConfig)
+			const profileStore = storedProfileStore
+				? updateActiveProfileConfig(storedProfileStore, profileConfig)
+				: createProfileStore({
+						...createMigratedProfile(profileConfig),
+						id: 'default',
+						name: 'Default API',
+					})
+			await chrome.storage.local.set({ [LLM_PROFILE_STORE_KEY]: profileStore })
 			if (language) {
 				await chrome.storage.local.set({ language })
 			} else {
@@ -110,7 +127,6 @@ export function useAgent(): UseAgentResult {
 				systemInstruction,
 				experimentalLlmsTxt,
 				experimentalIncludeAllTabs,
-				disableNamedToolChoice,
 			}
 			await chrome.storage.local.set({ advancedConfig })
 			setConfig({ ...llmConfig, ...advancedConfig, language })
