@@ -127,6 +127,8 @@ export function parseLlmProfileStore(value: unknown): LlmProfileStoreV1 | null {
 
 	const profiles = value.profiles.map(parseProfile)
 	if (profiles.some((profile) => profile === null)) return null
+	const ids = (profiles as PersistedLlmProfile[]).map(({ id }) => id)
+	if (ids.includes(BUILTIN_DEMO_PROFILE_ID) || new Set(ids).size !== ids.length) return null
 
 	return {
 		version: 1,
@@ -166,8 +168,8 @@ export function resolveActiveProfile(store: LlmProfileStoreV1): {
 export function inferProviderKind(baseURL: string): LlmProviderKind {
 	try {
 		const hostname = new URL(baseURL).hostname.toLowerCase()
-		if (hostname.endsWith('siliconflow.cn')) return 'siliconflow'
-		if (hostname.endsWith('deepseek.com')) return 'deepseek'
+		if (hostname === 'siliconflow.cn' || hostname.endsWith('.siliconflow.cn')) return 'siliconflow'
+		if (hostname === 'deepseek.com' || hostname.endsWith('.deepseek.com')) return 'deepseek'
 	} catch {
 		// A custom endpoint does not need to be a parseable URL to remain editable.
 	}

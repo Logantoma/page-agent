@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	BUILTIN_DEMO_PROFILE_ID,
 	canonicalizeLegacyDemoConfig,
 	createBuiltinDemoStore,
+	inferProviderKind,
 	isBareDemoConfig,
 	parseLlmProfileStore,
 	resolveActiveProfile,
@@ -51,6 +53,69 @@ describe('LlmProfileStore', () => {
 
 	it('rejects malformed profile-store envelopes', () => {
 		expect(parseLlmProfileStore({ version: 1, activeProfileId: 'x', profiles: [{}] })).toBeNull()
+	})
+
+	it('rejects duplicate persisted profile ids', () => {
+		expect(
+			parseLlmProfileStore({
+				version: 1,
+				activeProfileId: 'same',
+				profiles: [
+					{
+						id: 'same',
+						name: 'First',
+						provider: 'custom',
+						config: { baseURL: 'https://first.example.com', model: 'first' },
+					},
+					{
+						id: 'same',
+						name: 'Second',
+						provider: 'custom',
+						config: { baseURL: 'https://second.example.com', model: 'second' },
+					},
+				],
+			})
+		).toBeNull()
+	})
+
+	it('rejects the reserved built-in id in persisted profiles', () => {
+		expect(
+			parseLlmProfileStore({
+				version: 1,
+				activeProfileId: BUILTIN_DEMO_PROFILE_ID,
+				profiles: [
+					{
+						id: BUILTIN_DEMO_PROFILE_ID,
+						name: 'Invalid',
+						provider: 'custom',
+						config: { baseURL: 'https://example.com', model: 'model' },
+					},
+				],
+			})
+		).toBeNull()
+	})
+
+	it('accepts the built-in id as active when persisted profile ids are unique', () => {
+		expect(
+			parseLlmProfileStore({
+				version: 1,
+				activeProfileId: BUILTIN_DEMO_PROFILE_ID,
+				profiles: [
+					{
+						id: 'custom',
+						name: 'Custom',
+						provider: 'custom',
+						config: { baseURL: 'https://example.com', model: 'model' },
+					},
+				],
+			})
+		).not.toBeNull()
+	})
+
+	it('uses hostname boundaries when inferring providers', () => {
+		expect(inferProviderKind('https://api.deepseek.com')).toBe('deepseek')
+		expect(inferProviderKind('https://evil-deepseek.com')).toBe('custom')
+		expect(inferProviderKind('https://evil-siliconflow.cn')).toBe('custom')
 	})
 
 	it('repairs an empty store to the derived built-in demo profile', () => {
