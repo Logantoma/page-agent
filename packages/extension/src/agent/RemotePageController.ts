@@ -1,15 +1,26 @@
 import type { BrowserState } from '@page-agent/page-controller'
 
+import { rewriteFrameContent, type FrameIndexRoute } from './FrameIndexNamespace'
 import type { TabsController } from './TabsController'
 
 const PREFIX = '[RemotePageController]'
 
 const debug = console.debug.bind(console, `\x1b[90m${PREFIX}\x1b[0m`)
 
+interface RegisteredPageFrame {
+	tabId: number
+	frameId: number
+	documentId?: string
+	url?: string
+	origin?: string
+	registeredAt: number
+}
+
 function sendMessage(message: {
 	type: 'PAGE_CONTROL'
 	action: string
 	targetTabId: number
+	targetFrameId?: number
 	payload?: any
 }): Promise<any> {
 	return chrome.runtime.sendMessage(message).catch((error) => {
@@ -18,13 +29,28 @@ function sendMessage(message: {
 	})
 }
 
+function isBrowserState(value: unknown): value is BrowserState {
+	if (!value || typeof value !== 'object') return false
+	const state = value as Partial<BrowserState>
+	return (
+		typeof state.url === 'string' &&
+		typeof state.title === 'string' &&
+		typeof state.header === 'string' &&
+		typeof state.content === 'string' &&
+		typeof state.footer === 'string'
+	)
+}
+
 /**
  * Agent side page controller.
  * - live in the agent env (extension page or content script)
  * - communicates with remote PageController via sw
+ * - aggregates independently isolated frame controllers into one global index space
  */
 export class RemotePageController {
 	tabsController: TabsController
+	private frameIndexRoutes = new Map<number, FrameIndexRoute>()
+	private knownFrames: RegisteredPageFrame[] = []
 
 	constructor(tabsController: TabsController) {
 		this.tabsController = tabsController
@@ -52,6 +78,7 @@ export class RemotePageController {
 			type: 'PAGE_CONTROL',
 			action: 'get_last_update_time',
 			targetTabId: this.currentTabId,
+			targetFrameId: 0,
 		})
 	}
 
@@ -70,12 +97,14 @@ export class RemotePageController {
 				content: '(empty page. either current page is not readable or not loaded yet.)',
 				footer: '',
 			}
+			this.frameIndexRoutes.clear()
+			this.knownFrames = []
 		} else {
-			browserState = await sendMessage({
-				type: 'PAGE_CONTROL',
-				action: 'get_browser_state',
-				targetTabId: this.currentTabId,
-			})
+			browserState = await this.getAggregatedBrowserState(
+				this.currentTabId,
+				currentUrl,
+				currentTitle
+			)
 		}
 
 		const sum = await this.tabsController.summarizeTabs()
@@ -87,50 +116,86 @@ export class RemotePageController {
 	}
 
 	async updateTree(): Promise<void> {
-		if (!this.currentTabId || !isContentScriptAllowed(await this.getCurrentUrl())) {
-			return
-		}
+		if (!this.currentTabId || !isContentScriptAllowed(await this.getCurrentUrl())) return
 
 		await sendMessage({
 			type: 'PAGE_CONTROL',
 			action: 'update_tree',
 			targetTabId: this.currentTabId,
+			targetFrameId: 0,
 		})
 	}
 
 	async cleanUpHighlights(): Promise<void> {
-		if (!this.currentTabId || !isContentScriptAllowed(await this.getCurrentUrl())) {
-			return
-		}
+		if (!this.currentTabId || !isContentScriptAllowed(await this.getCurrentUrl())) return
 
-		await sendMessage({
-			type: 'PAGE_CONTROL',
-			action: 'clean_up_highlights',
-			targetTabId: this.currentTabId,
-		})
+		const frames = this.knownFrames.length
+			? this.knownFrames
+			: await this.getRegisteredFrames(this.currentTabId, await this.getCurrentUrl())
+
+		await Promise.allSettled(
+			frames.map((frame) =>
+				sendMessage({
+					type: 'PAGE_CONTROL',
+					action: 'clean_up_highlights',
+					targetTabId: this.currentTabId!,
+					targetFrameId: frame.frameId,
+				})
+			)
+		)
 	}
 
-	async clickElement(...args: any[]): Promise<DomActionReturn> {
-		const res = await this.remoteCallDomAction('click_element', args)
+	async clickElement(index: number): Promise<DomActionReturn> {
+		const route = this.resolveIndexRoute(index)
+		const res = await this.remoteCallDomAction('click_element', [route.localIndex], route.frameId)
 		// @note may cause page navigation, wait for 1 second to ensure the page loading started
 		await new Promise((resolve) => setTimeout(resolve, 1000))
 		return res
 	}
 
-	async inputText(...args: any[]): Promise<DomActionReturn> {
-		return this.remoteCallDomAction('input_text', args)
+	async inputText(index: number, text: string): Promise<DomActionReturn> {
+		const route = this.resolveIndexRoute(index)
+		return this.remoteCallDomAction('input_text', [route.localIndex, text], route.frameId)
 	}
 
-	async selectOption(...args: any[]): Promise<DomActionReturn> {
-		return this.remoteCallDomAction('select_option', args)
+	async selectOption(index: number, optionText: string): Promise<DomActionReturn> {
+		const route = this.resolveIndexRoute(index)
+		return this.remoteCallDomAction(
+			'select_option',
+			[route.localIndex, optionText],
+			route.frameId
+		)
 	}
 
-	async scroll(...args: any[]): Promise<DomActionReturn> {
-		return this.remoteCallDomAction('scroll', args)
+	async scroll(options: {
+		down: boolean
+		numPages: number
+		pixels?: number
+		index?: number
+	}): Promise<DomActionReturn> {
+		let targetFrameId = 0
+		const translated = { ...options }
+		if (translated.index !== undefined) {
+			const route = this.resolveIndexRoute(translated.index)
+			targetFrameId = route.frameId
+			translated.index = route.localIndex
+		}
+		return this.remoteCallDomAction('scroll', [translated], targetFrameId)
 	}
 
-	async scrollHorizontally(...args: any[]): Promise<DomActionReturn> {
-		return this.remoteCallDomAction('scroll_horizontally', args)
+	async scrollHorizontally(options: {
+		right: boolean
+		pixels: number
+		index?: number
+	}): Promise<DomActionReturn> {
+		let targetFrameId = 0
+		const translated = { ...options }
+		if (translated.index !== undefined) {
+			const route = this.resolveIndexRoute(translated.index)
+			targetFrameId = route.frameId
+			translated.index = route.localIndex
+		}
+		return this.remoteCallDomAction('scroll_horizontally', [translated], targetFrameId)
 	}
 
 	// `execute_javascript` is intentionally not implemented: AbortSignal cannot cross context
@@ -139,10 +204,124 @@ export class RemotePageController {
 	async showMask(): Promise<void> {}
 	/** @note Managed by content script via storage polling. */
 	async hideMask(): Promise<void> {}
-	/** @note Managed by content script via storage polling. */
-	dispose(): void {}
+	dispose(): void {
+		this.frameIndexRoutes.clear()
+		this.knownFrames = []
+	}
 
-	private async remoteCallDomAction(action: string, payload: any[]): Promise<DomActionReturn> {
+	private resolveIndexRoute(index: number): FrameIndexRoute {
+		return this.frameIndexRoutes.get(index) ?? { frameId: 0, localIndex: index }
+	}
+
+	private async getAggregatedBrowserState(
+		tabId: number,
+		currentUrl: string,
+		currentTitle: string
+	): Promise<BrowserState> {
+		const frames = await this.getRegisteredFrames(tabId, currentUrl)
+		this.knownFrames = frames
+		this.frameIndexRoutes.clear()
+
+		let nextIndex = 0
+		let topState: BrowserState | null = null
+		const embeddedBlocks: string[] = []
+
+		for (const frame of frames) {
+			const state = await sendMessage({
+				type: 'PAGE_CONTROL',
+				action: 'get_browser_state',
+				targetTabId: tabId,
+				targetFrameId: frame.frameId,
+			})
+
+			if (!isBrowserState(state)) {
+				if (frame.frameId !== 0) await this.removeStaleFrame(frame)
+				continue
+			}
+
+			const rewritten = rewriteFrameContent(
+				state.content,
+				frame.frameId,
+				nextIndex,
+				this.frameIndexRoutes
+			)
+			nextIndex = rewritten.nextIndex
+
+			if (frame.frameId === 0) {
+				topState = { ...state, content: rewritten.content }
+				continue
+			}
+
+			embeddedBlocks.push(
+				[
+					`--- Embedded frame ${frame.frameId}: [${state.title || 'untitled'}](${state.url || frame.url || ''}) ---`,
+					rewritten.content || '(no interactive elements in this frame)',
+					`--- End embedded frame ${frame.frameId} ---`,
+				].join('\n')
+			)
+		}
+
+		if (!topState) {
+			topState = {
+				url: currentUrl,
+				title: currentTitle,
+				header: '',
+				content: '(top frame is not readable or not loaded yet.)',
+				footer: '',
+			}
+		}
+
+		if (embeddedBlocks.length) {
+			topState.content = [
+				topState.content,
+				'',
+				'Embedded frame contexts (interactive indices work like top-page indices):',
+				...embeddedBlocks,
+			].join('\n')
+		}
+
+		return topState
+	}
+
+	private async getRegisteredFrames(
+		tabId: number,
+		currentUrl: string
+	): Promise<RegisteredPageFrame[]> {
+		const response = await sendMessage({
+			type: 'PAGE_CONTROL',
+			action: 'list_frames',
+			targetTabId: tabId,
+		})
+
+		const frames: RegisteredPageFrame[] = Array.isArray(response?.frames)
+			? response.frames.filter(
+					(frame: RegisteredPageFrame) => frame?.tabId === tabId && Number.isInteger(frame.frameId)
+				)
+			: []
+
+		if (!frames.some((frame) => frame.frameId === 0)) {
+			frames.push({ tabId, frameId: 0, url: currentUrl, registeredAt: Date.now() })
+		}
+
+		return frames.sort((a, b) => a.frameId - b.frameId)
+	}
+
+	private async removeStaleFrame(frame: RegisteredPageFrame): Promise<void> {
+		if (!this.currentTabId) return
+		await sendMessage({
+			type: 'PAGE_CONTROL',
+			action: 'unregister_frame',
+			targetTabId: this.currentTabId,
+			targetFrameId: frame.frameId,
+			payload: { documentId: frame.documentId },
+		})
+	}
+
+	private async remoteCallDomAction(
+		action: string,
+		payload: any[],
+		targetFrameId = 0
+	): Promise<DomActionReturn> {
 		if (!this.currentTabId) {
 			return { success: false, message: 'RemotePageController not initialized.' }
 		}
@@ -157,8 +336,9 @@ export class RemotePageController {
 
 		return sendMessage({
 			type: 'PAGE_CONTROL',
-			action: action,
-			targetTabId: this.currentTabId!,
+			action,
+			targetTabId: this.currentTabId,
+			targetFrameId,
 			payload,
 		})
 	}
