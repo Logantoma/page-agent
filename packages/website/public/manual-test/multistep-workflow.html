@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>B4.3 通用业务工作流 Benchmark</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#edf2f7;color:#172033;overflow:hidden}
+body{position:relative}#workspace{height:100vh;overflow-y:auto;padding:28px}.shell{max-width:920px;margin:0 auto;display:grid;gap:24px}.card{background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:24px;box-shadow:0 10px 30px rgba(20,30,50,.06)}h1,h2{margin:0 0 12px}p{line-height:1.65}.steps{margin:0;padding-left:22px;line-height:1.75}.tableWrap{overflow-x:auto;margin-top:16px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid #e3e8ef;text-align:left;white-space:nowrap}th{background:#f8fafc}.field{display:grid;gap:7px;margin-top:16px}.field input,.field select{height:44px;padding:0 12px;border:1px solid #aeb9c9;border-radius:9px;font-size:16px;background:#fff}.spacer{height:78vh;display:grid;place-items:center;color:#667085;font-weight:700;letter-spacing:.04em}.canvasWrap{display:grid;gap:10px;place-items:center}.canvasWrap canvas{width:min(100%,640px);height:auto;border:1px solid #d8e0ea;border-radius:12px;background:#fff}.refUrl{display:block;overflow-wrap:anywhere;padding:10px 12px;border-radius:9px;background:#f5f7fb;border:1px solid #d8e0ea;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.checkRow{display:flex;align-items:center;gap:9px;margin:14px 0}.submit{height:44px;padding:0 18px;border:0;border-radius:9px;background:#3157d5;color:#fff;font-weight:750;cursor:pointer}.result{margin-top:14px;font-weight:850;font-size:18px}.pass{color:#16794b}.fail{color:#b42318}.diagnostics{margin-top:10px;font-size:13px;line-height:1.7;color:#475467}.status{position:fixed;right:14px;top:14px;z-index:10;background:#fff;border:1px solid #d8e0ea;border-radius:10px;padding:9px 11px;font-size:12px;box-shadow:0 8px 24px rgba(20,30,50,.08)}
+</style>
+</head>
+<body>
+<div class="status" id="status">scroll:0 · canvas:NO · ref:NO</div>
+<main id="workspace">
+  <div class="shell">
+    <section class="card">
+      <h1>B4.3 运营核对工作台</h1>
+      <p>这是一个通用后台业务流程回归页，用于验证表格、滚动、视觉图表、跨标签页和表单操作能否在同一任务里稳定协作。</p>
+      <h2>本次处理流程</h2>
+      <ol class="steps">
+        <li>在下面记录表中找到客户 <strong>Northwind Retail</strong> 且状态为 <strong>待复核</strong> 的记录；若有多条，选择金额最高的一条。</li>
+        <li><strong>先</strong>把该记录的订单号填入“订单号”字段，再继续后续步骤。</li>
+        <li>使用普通滚动向下查看“运营负载图”，选择 Canvas 中<strong>柱形最长</strong>的处理通道。</li>
+        <li>继续滚动到底部审批区。在<strong>新标签页</strong>打开页面给出的供应商参考 URL，按订单号查出供应商校验码，然后切回本工作台。</li>
+        <li>选择处理通道、填入供应商校验码、勾选“已核对来源”，提交。只有页面显示 PASS 才算完成。</li>
+      </ol>
+      <div class="tableWrap">
+        <table aria-label="待处理记录">
+          <thead><tr><th>订单号</th><th>客户</th><th>状态</th><th>金额</th></tr></thead>
+          <tbody>
+            <tr><td>NW-301</td><td>Northwind Retail</td><td>待复核</td><td>¥12,800</td></tr>
+            <tr><td>NW-417</td><td>Northwind Retail</td><td>已通过</td><td>¥23,600</td></tr>
+            <tr><td>NW-522</td><td>Northwind Retail</td><td>待复核</td><td>¥18,400</td></tr>
+            <tr><td>AL-098</td><td>Alpine Market</td><td>待复核</td><td>¥31,100</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <label class="field" for="orderId">
+        <span>订单号</span>
+        <input id="orderId" autocomplete="off" placeholder="填写目标订单号" />
+      </label>
+    </section>
+
+    <div class="spacer">业务内容区域 · 请继续普通向下滚动</div>
+
+    <section class="card canvasWrap" id="canvasSection">
+      <div>
+        <h2>运营负载图（Canvas）</h2>
+        <p>请选择柱形最长的处理通道。图中信息只绘制在 Canvas 内，不提供 DOM 文本答案。</p>
+      </div>
+      <canvas id="loadChart" width="640" height="260" aria-label="运营负载图"></canvas>
+    </section>
+
+    <div class="spacer">审批区在更下方 · 继续滚动</div>
+
+    <section class="card" id="approval">
+      <h2>审批与供应商核对</h2>
+      <p>请在新标签页打开下面的供应商参考页。不要覆盖当前工作台。</p>
+      <code class="refUrl" id="referenceUrl"></code>
+
+      <label class="field" for="channel">
+        <span>处理通道</span>
+        <select id="channel">
+          <option value="">请选择</option>
+          <option value="standard">Standard</option>
+          <option value="priority">Priority</option>
+          <option value="manual">Manual</option>
+        </select>
+      </label>
+
+      <label class="field" for="vendorCode">
+        <span>供应商校验码</span>
+        <input id="vendorCode" autocomplete="off" placeholder="从供应商参考页读取" />
+      </label>
+
+      <label class="checkRow" for="verified">
+        <input id="verified" type="checkbox" />
+        <span>已核对来源</span>
+      </label>
+
+      <button class="submit" id="submit" type="button">提交运营核对</button>
+      <div class="result" id="result">WAITING</div>
+      <div class="diagnostics" id="diagnostics"></div>
+    </section>
+    <div style="height:40px"></div>
+  </div>
+</main>
+<script>
+(()=>{
+  const REF_VISITED='b43.reference.visited';
+  localStorage.removeItem(REF_VISITED);
+
+  const workspace=document.getElementById('workspace');
+  const canvasSection=document.getElementById('canvasSection');
+  const orderId=document.getElementById('orderId');
+  const channel=document.getElementById('channel');
+  const vendorCode=document.getElementById('vendorCode');
+  const verified=document.getElementById('verified');
+  const result=document.getElementById('result');
+  const diagnostics=document.getElementById('diagnostics');
+  const status=document.getElementById('status');
+  const referenceUrl=document.getElementById('referenceUrl');
+
+  referenceUrl.textContent=new URL('multistep-workflow-reference.html',location.href).href;
+
+  let workspaceEverScrolled=false;
+  let canvasSeen=false;
+  let orderEnteredBeforeReference=false;
+
+  const updateCanvasSeen=()=>{
+    const r=canvasSection.getBoundingClientRect();
+    if(r.top<window.innerHeight && r.bottom>0) canvasSeen=true;
+  };
+  const renderStatus=()=>{
+    const ref=localStorage.getItem(REF_VISITED)==='1';
+    status.textContent=`scroll:${Math.round(workspace.scrollTop)} · canvas:${canvasSeen?'YES':'NO'} · ref:${ref?'YES':'NO'}`;
+  };
+  workspace.addEventListener('scroll',()=>{
+    if(workspace.scrollTop>180) workspaceEverScrolled=true;
+    updateCanvasSeen();
+    renderStatus();
+  });
+  orderId.addEventListener('input',()=>{
+    if(orderId.value.trim()==='NW-522' && localStorage.getItem(REF_VISITED)!=='1'){
+      orderEnteredBeforeReference=true;
+    }
+  });
+
+  const canvas=document.getElementById('loadChart');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,640,260);
+  ctx.fillStyle='#172033';ctx.font='700 20px system-ui';ctx.fillText('当前处理通道负载',24,34);
+  const rows=[['Standard',42],['Priority',82],['Manual',56]];
+  rows.forEach(([label,value],i)=>{
+    const y=72+i*58;
+    ctx.fillStyle='#344054';ctx.font='600 16px system-ui';ctx.fillText(label,24,y+22);
+    ctx.fillStyle='#e6eaf0';ctx.fillRect(132,y,430,30);
+    ctx.fillStyle='#667085';ctx.fillRect(132,y,Math.round(430*value/100),30);
+    ctx.fillStyle='#172033';ctx.font='700 15px system-ui';ctx.fillText(String(value),575,y+21);
+  });
+
+  document.getElementById('submit').addEventListener('click',()=>{
+    const checks={
+      targetOrder:orderId.value.trim()==='NW-522',
+      scrolled:workspaceEverScrolled,
+      canvasViewed:canvasSeen,
+      channel:channel.value==='priority',
+      referenceVisited:localStorage.getItem(REF_VISITED)==='1',
+      orderBeforeReference:orderEnteredBeforeReference,
+      vendorCode:vendorCode.value.trim()==='VND-583',
+      verified:verified.checked,
+    };
+    const ok=Object.values(checks).every(Boolean);
+    result.textContent=ok?'PASS: multistep business workflow completed':'FAIL: one or more workflow checkpoints failed';
+    result.className='result '+(ok?'pass':'fail');
+    diagnostics.textContent=Object.entries(checks).map(([k,v])=>`${k}:${v?'PASS':'FAIL'}`).join(' · ');
+    renderStatus();
+  });
+
+  updateCanvasSeen();
+  renderStatus();
+})();
+</script>
+</body>
+</html>
