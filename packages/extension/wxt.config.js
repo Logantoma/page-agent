@@ -32,6 +32,7 @@ export default defineConfig({
 				onwarn: function (message, handler) {
 					if (message.code === 'EVAL') return
 					handler(message)
+				},
 			},
 		},
 	}),
