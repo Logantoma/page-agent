@@ -1,6 +1,10 @@
 import type { BrowserState } from '@page-agent/page-controller'
 
-import { rewriteFrameContent, type FrameIndexRoute } from './FrameIndexNamespace'
+import {
+	rewriteFrameActionMessage,
+	rewriteFrameContent,
+	type FrameIndexRoute,
+} from './FrameIndexNamespace'
 import type { TabsController } from './TabsController'
 
 const PREFIX = '[RemotePageController]'
@@ -150,21 +154,23 @@ export class RemotePageController {
 		const res = await this.remoteCallDomAction('click_element', [route.localIndex], route.frameId)
 		// @note may cause page navigation, wait for 1 second to ensure the page loading started
 		await new Promise((resolve) => setTimeout(resolve, 1000))
-		return res
+		return this.translateFrameActionReturn(res, route, index)
 	}
 
 	async inputText(index: number, text: string): Promise<DomActionReturn> {
 		const route = this.resolveIndexRoute(index)
-		return this.remoteCallDomAction('input_text', [route.localIndex, text], route.frameId)
+		const res = await this.remoteCallDomAction('input_text', [route.localIndex, text], route.frameId)
+		return this.translateFrameActionReturn(res, route, index)
 	}
 
 	async selectOption(index: number, optionText: string): Promise<DomActionReturn> {
 		const route = this.resolveIndexRoute(index)
-		return this.remoteCallDomAction(
+		const res = await this.remoteCallDomAction(
 			'select_option',
 			[route.localIndex, optionText],
 			route.frameId
 		)
+		return this.translateFrameActionReturn(res, route, index)
 	}
 
 	async scroll(options: {
@@ -174,13 +180,19 @@ export class RemotePageController {
 		index?: number
 	}): Promise<DomActionReturn> {
 		let targetFrameId = 0
+		let route: FrameIndexRoute | null = null
+		let globalIndex: number | null = null
 		const translated = { ...options }
 		if (translated.index !== undefined) {
-			const route = this.resolveIndexRoute(translated.index)
+			globalIndex = translated.index
+			route = this.resolveIndexRoute(translated.index)
 			targetFrameId = route.frameId
 			translated.index = route.localIndex
 		}
-		return this.remoteCallDomAction('scroll', [translated], targetFrameId)
+		const res = await this.remoteCallDomAction('scroll', [translated], targetFrameId)
+		return route && globalIndex !== null
+			? this.translateFrameActionReturn(res, route, globalIndex)
+			: res
 	}
 
 	async scrollHorizontally(options: {
@@ -189,13 +201,19 @@ export class RemotePageController {
 		index?: number
 	}): Promise<DomActionReturn> {
 		let targetFrameId = 0
+		let route: FrameIndexRoute | null = null
+		let globalIndex: number | null = null
 		const translated = { ...options }
 		if (translated.index !== undefined) {
-			const route = this.resolveIndexRoute(translated.index)
+			globalIndex = translated.index
+			route = this.resolveIndexRoute(translated.index)
 			targetFrameId = route.frameId
 			translated.index = route.localIndex
 		}
-		return this.remoteCallDomAction('scroll_horizontally', [translated], targetFrameId)
+		const res = await this.remoteCallDomAction('scroll_horizontally', [translated], targetFrameId)
+		return route && globalIndex !== null
+			? this.translateFrameActionReturn(res, route, globalIndex)
+			: res
 	}
 
 	// `execute_javascript` is intentionally not implemented: AbortSignal cannot cross context
@@ -211,6 +229,18 @@ export class RemotePageController {
 
 	private resolveIndexRoute(index: number): FrameIndexRoute {
 		return this.frameIndexRoutes.get(index) ?? { frameId: 0, localIndex: index }
+	}
+
+	private translateFrameActionReturn(
+		result: DomActionReturn,
+		route: FrameIndexRoute,
+		globalIndex: number
+	): DomActionReturn {
+		if (route.frameId === 0 || typeof result?.message !== 'string') return result
+		return {
+			...result,
+			message: rewriteFrameActionMessage(result.message, route, globalIndex),
+		}
 	}
 
 	private async getAggregatedBrowserState(
