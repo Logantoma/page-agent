@@ -49,9 +49,9 @@ export class InPageLauncher {
 		const element = document.createElement('button')
 		element.id = LAUNCHER_ID
 		element.type = 'button'
-		element.textContent = 'PA'
-		element.title = '打开 Page Agent'
-		element.setAttribute('aria-label', '打开 Page Agent')
+		element.textContent = 'PS'
+		element.title = '打开 PsySquid Web'
+		element.setAttribute('aria-label', '打开 PsySquid Web')
 		element.setAttribute('data-browser-use-ignore', 'true')
 		element.setAttribute('data-page-agent-ignore', 'true')
 		Object.assign(element.style, {

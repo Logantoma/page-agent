@@ -232,7 +232,7 @@ export class TabsController {
 			payload: {
 				groupId: this.tabGroupId,
 				properties: {
-					title: `PageAgent(${this.task})`,
+					title: `PsySquid Web(${this.task})`,
 					color: randomColor(),
 					collapsed: false,
 				},

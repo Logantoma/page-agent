@@ -43,7 +43,7 @@ describe('loadAgentConfig', () => {
 				activeProfileId: 'legacy-imported',
 				profiles: [
 					expect.objectContaining({
-						name: 'Migrated Page Agent Configuration',
+						name: 'Migrated PsySquid Web Configuration',
 						provider: 'deepseek',
 						config: expect.objectContaining({ temperature: 0.4, maxRetries: 3 }),
 					}),

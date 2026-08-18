@@ -67,7 +67,7 @@ export function isBareDemoConfig(config: SerializableLlmProfileConfig): boolean 
 export function createMigratedProfile(config: SerializableLlmProfileConfig): PersistedLlmProfile {
 	return {
 		id: 'legacy-imported',
-		name: 'Migrated Page Agent Configuration',
+		name: 'Migrated PsySquid Web Configuration',
 		provider: inferProviderKind(config.baseURL),
 		config,
 	}
