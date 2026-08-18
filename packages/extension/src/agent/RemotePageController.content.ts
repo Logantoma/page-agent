@@ -1,7 +1,9 @@
 /**
  * content script for RemotePageController
  */
-import { PageController } from '@page-agent/page-controller'
+import type { PageController } from '@page-agent/page-controller'
+
+import { ExtensionPageController } from './ExtensionPageController.content'
 
 export function initPageController() {
 	let pageController: PageController | null = null
@@ -19,7 +21,7 @@ export function initPageController() {
 
 	function getPC(): PageController {
 		if (!pageController) {
-			pageController = new PageController({
+			pageController = new ExtensionPageController({
 				enableMask: false,
 				viewportExpansion: 400,
 			})
