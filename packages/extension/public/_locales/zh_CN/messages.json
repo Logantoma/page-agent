@@ -1,11 +1,11 @@
 {
     "extName": {
-        "message": "Page Agent Ext"
+        "message": "PsySquid Web"
     },
     "extDescription": {
-        "message": "AI 驱动的浏览器自动化助手，用自然语言控制网页。"
+        "message": "PsySquid Web 浏览器智能助手，用自然语言控制网页。"
     },
     "extActionTitle": {
-        "message": "打开 Page Agent"
+        "message": "打开 PsySquid Web 设置"
     }
 }
