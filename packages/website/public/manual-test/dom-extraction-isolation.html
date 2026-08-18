@@ -6,8 +6,9 @@
 <title>Page Agent DOM Extraction Isolation</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#eef2f7;color:#172033}
-main{min-height:100vh;display:grid;place-items:center;padding:32px}.card{width:min(680px,92vw);background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:28px;box-shadow:0 12px 36px rgba(20,30,50,.08);display:grid;gap:14px}.card h1{margin:0 0 4px}.card input{height:46px;padding:0 13px;border:1px solid #aeb9c9;border-radius:9px;font-size:17px}.card button{height:44px;width:max-content;padding:0 18px;border:0;border-radius:9px;background:#3157d5;color:#fff;font-weight:700;cursor:pointer}.result{font-weight:800}.pass{color:#16794b}.fail{color:#b42318}
+main{min-height:100vh;display:grid;place-items:center;padding:32px}.card{width:min(680px,92vw);background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:28px;box-shadow:0 12px 36px rgba(20,30,50,.08);display:grid;gap:14px}.card h1{margin:0 0 4px}.card input{height:46px;padding:0 13px;border:1px solid #aeb9c9;border-radius:9px;font-size:17px}.card button{height:44px;width:max-content;padding:0 18px;border:0;border-radius:9px;background:#3157d5;color:#fff;font-weight:700;cursor:pointer}.result,.diagnostic{font-weight:800}.pass{color:#16794b}.fail{color:#b42318}.waiting{color:#8a5b00}
 #agentOverlay{position:fixed;z-index:100;left:50%;top:50%;transform:translate(-50%,-5%);width:min(720px,96vw);height:180px;border:3px dashed #d92d20;border-radius:14px;background:rgba(217,45,32,.08);pointer-events:auto;display:grid;place-items:start center;padding-top:8px;color:#b42318;font-size:12px;font-weight:700}
+#diagnostics{position:fixed;right:12px;top:12px;z-index:200;background:#fff;border:1px solid #d8e0ea;border-radius:10px;padding:10px 12px;font-size:12px;box-shadow:0 8px 24px rgba(20,30,50,.08)}
 </style>
 </head>
 <body>
@@ -24,11 +25,38 @@ main{min-height:100vh;display:grid;place-items:center;padding:32px}.card{width:m
 <div id="agentOverlay" data-page-agent-ignore="true" data-browser-use-ignore="true" aria-hidden="true">
   AGENT-OWNED HIT-TEST OVERLAY · MUST NOT HIDE PAGE CONTROLS FROM DOM EXTRACTION
 </div>
+<div id="diagnostics">
+  <div>Hit-test guard: <span id="guardState" class="waiting">NOT OBSERVED</span></div>
+  <div id="baselineState">Baseline hit-test: checking…</div>
+</div>
 <script>
 (()=>{
   const input=document.getElementById('probeInput');
   const button=document.getElementById('probeButton');
   const result=document.getElementById('result');
+  const overlay=document.getElementById('agentOverlay');
+  const guardState=document.getElementById('guardState');
+  const baselineState=document.getElementById('baselineState');
+
+  const rect=input.getBoundingClientRect();
+  const baseline=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);
+  baselineState.textContent=`Baseline hit-test: ${baseline?.id||baseline?.tagName||'none'}`;
+
+  let guardSeen=false;
+  const observer=new MutationObserver((records)=>{
+    if(guardSeen) return;
+    const current=overlay.style.getPropertyValue('pointer-events');
+    const seenNone=current==='none'||records.some((record)=>
+      typeof record.oldValue==='string' && /pointer-events\s*:\s*none/i.test(record.oldValue)
+    );
+    if(seenNone){
+      guardSeen=true;
+      guardState.textContent='GUARD OBSERVED';
+      guardState.className='pass';
+    }
+  });
+  observer.observe(overlay,{attributes:true,attributeFilter:['style'],attributeOldValue:true});
+
   button.addEventListener('click',()=>{
     const ok=input.value.trim()==='HIT-742';
     result.textContent=ok?'PASS: input and button remained indexable':'FAIL: incorrect token';
