@@ -1,8 +1,6 @@
 import type { AgentStatus } from '@page-agent/core'
 import { Motion } from 'ai-motion'
-import { BookOpen, Globe } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { siGithub } from 'simple-icons'
 
 import { TypingAnimation } from '@/components/ui/typing-animation'
 import { cn } from '@/lib/utils'
@@ -36,7 +34,7 @@ export function StatusDot({ status }: { status: AgentStatus }) {
 }
 
 export function Logo({ className }: { className?: string }) {
-	return <img src="/assets/page-agent-256.webp" alt="Page Agent" className={cn('', className)} />
+	return <img src="/assets/psysquid.png" alt="PsySquid Web" className={cn('', className)} />
 }
 
 // Full-screen ai-motion glow overlay, shown only while running
@@ -92,7 +90,7 @@ export function MotionOverlay({ active }: { active: boolean }) {
 	)
 }
 
-// Empty state with logo and breathing glow
+// Legacy empty state retained for compatibility with upstream components.
 export function EmptyState() {
 	return (
 		<div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
@@ -102,14 +100,13 @@ export function EmptyState() {
 				<Logo className="relative size-20 opacity-80" />
 			</div>
 			<div>
-				<h2 className="text-base font-medium text-foreground mb-1">Page Agent Ext</h2>
+				<h2 className="text-base font-medium text-foreground mb-1">PsySquid Web</h2>
 				<TypingAnimation
 					className="text-sm text-muted-foreground"
 					words={[
-						'输入任务，让 Agent 自动操作当前页面',
+						'配置模型与网页操作能力',
 						'执行跨页面的多步骤任务',
-						'从网页中调用此扩展',
-						'在你的 Agent 中使用此扩展',
+						'使用视觉观察理解复杂页面',
 					]}
 					cursorStyle="underscore"
 					loop
@@ -118,37 +115,6 @@ export function EmptyState() {
 					deleteSpeed={10}
 					pauseDelay={3000}
 				/>
-			</div>
-			<div className="flex items-center gap-3 mt-1 text-muted-foreground">
-				<a
-					href="https://github.com/alibaba/page-agent"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="hover:text-foreground transition-colors"
-					title="GitHub"
-				>
-					<svg role="img" viewBox="0 0 24 24" className="size-4 fill-current">
-						<path d={siGithub.path} />
-					</svg>
-				</a>
-				<a
-					href="https://alibaba.github.io/page-agent/docs/features/chrome-extension"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="hover:text-foreground transition-colors"
-					title="文档"
-				>
-					<BookOpen className="size-4" />
-				</a>
-				<a
-					href="https://alibaba.github.io/page-agent"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="hover:text-foreground transition-colors"
-					title="官网"
-				>
-					<Globe className="size-4" />
-				</a>
 			</div>
 		</div>
 	)
