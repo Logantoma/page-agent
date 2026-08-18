@@ -8,11 +8,20 @@ const DEBUG_PREFIX = '[Content]'
 
 export default defineContentScript({
 	matches: ['<all_urls>'],
+	allFrames: true,
 	runAt: 'document_end',
 
 	main(ctx) {
 		console.debug(`${DEBUG_PREFIX} Loaded on ${window.location.href}`)
+
+		// PageController must exist inside every matching frame so cross-origin iframe
+		// DOM access happens within that frame's own isolated-world context.
 		initPageController()
+
+		// Everything below is top-frame UI / agent infrastructure and must not be
+		// duplicated inside embedded third-party frames.
+		if (window.top !== window) return
+
 		const disposeVisualObservation = initVisualObservationContent()
 		const inPageShell = new InPageAgentShell()
 		ctx.onInvalidated(() => {
