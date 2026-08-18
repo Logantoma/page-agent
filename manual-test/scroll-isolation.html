@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Page Agent Scroll Isolation QA</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f4f6fa;color:#172033}.shell{max-width:860px;margin:auto;padding:28px 20px}.card{background:#fff;border:1px solid #d9e0ea;border-radius:14px;padding:22px;box-shadow:0 8px 24px rgba(20,30,50,.05)}.spacer{height:1100px;display:grid;place-items:center;color:#98a2b3}.token{font-size:28px;font-weight:800;letter-spacing:.08em}.middle{display:grid;gap:12px}.middle input{width:100%;padding:11px 12px;border:1px solid #b9c4d5;border-radius:9px;font-size:16px}.middle button{width:max-content;padding:10px 16px;border:0;border-radius:9px;background:#3157d5;color:#fff;cursor:pointer}.result{font-weight:700}.pass{color:#16794b}.fail{color:#b42318}.trap{position:fixed;right:18px;top:90px;width:280px;height:62vh;overflow:auto;border:3px solid #e5484d;background:#fff4f4;z-index:10;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.15)}.trap h3{margin-top:0}.trap-item{height:90px;border-bottom:1px solid #efb7b7;padding:10px}.mode-app{height:100vh;overflow:hidden}.mode-app #appScroll{height:100vh;overflow:auto}.mode-app .shell{padding-bottom:80px}@media(max-width:1100px){.trap{width:220px;opacity:.92}.shell{margin-left:20px;margin-right:250px}}@media(max-width:760px){.trap{width:180px;right:8px}.shell{margin:0 190px 0 0;padding-left:12px;padding-right:12px}}
+</style>
+</head>
+<body>
+<div id="appScroll">
+  <main class="shell">
+    <section class="card" id="topSection">
+      <div>顶部令牌</div>
+      <div class="token" id="topToken">TOP-314</div>
+      <p>请记住顶部令牌，然后继续向下找到底部令牌。</p>
+    </section>
+    <div class="spacer">长页面区域 A</div>
+    <section class="card middle" id="middleSection">
+      <h2>中间检查点</h2>
+      <p>读取底部令牌后回到这里，把“顶部令牌|底部令牌”输入下方。</p>
+      <input id="answer" aria-label="组合令牌" placeholder="TOP-xxx|BOTTOM-xxx" />
+      <button id="verifyBtn" type="button">验证</button>
+      <div class="result" id="result">WAITING</div>
+    </section>
+    <div class="spacer">长页面区域 B</div>
+    <section class="card" id="bottomSection">
+      <div>底部令牌</div>
+      <div class="token" id="bottomToken">BOTTOM-926</div>
+      <p>现在返回中间检查点完成任务。</p>
+    </section>
+  </main>
+</div>
+
+<aside class="trap" data-page-agent-ignore="true" data-browser-use-ignore="true" aria-hidden="true">
+  <h3>Agent-owned scroll trap</h3>
+  <p>这个区域故意比普通内容更容易被误判为滚动容器，但 Page Agent 必须忽略它。</p>
+  <div id="trapItems"></div>
+</aside>
+
+<script>
+(()=>{
+  const mode=new URLSearchParams(location.search).get('mode')||'page';
+  if(mode==='app') document.body.classList.add('mode-app');
+  document.title=`Page Agent Scroll Isolation QA · ${mode}`;
+  const trap=document.getElementById('trapItems');
+  for(let i=1;i<=30;i++){
+    const item=document.createElement('div');
+    item.className='trap-item';
+    item.textContent=`Ignored trap row ${i}`;
+    trap.appendChild(item);
+  }
+  document.getElementById('verifyBtn').addEventListener('click',()=>{
+    const value=document.getElementById('answer').value.trim();
+    const result=document.getElementById('result');
+    const ok=value==='TOP-314|BOTTOM-926';
+    result.textContent=ok?'PASS: scroll isolation task solved':'FAIL: incorrect combined token';
+    result.className='result '+(ok?'pass':'fail');
+  });
+})();
+</script>
+</body>
+</html>
