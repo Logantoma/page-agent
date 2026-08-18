@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Page Agent Scroll Isolation V2</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#eef2f7;color:#172033;overflow:hidden}
+#appMain{height:100vh;overflow-y:auto;padding:28px}
+.shell{max-width:820px;margin:0 auto}.card{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:22px;box-shadow:0 8px 24px rgba(20,30,50,.06)}
+.spacer{height:125vh;display:grid;place-items:center;color:#667085;font-size:18px}.token{font-size:30px;font-weight:800;letter-spacing:.08em}.bottom{display:grid;gap:12px;margin-bottom:40px}.bottom input{padding:12px;border:1px solid #b7c1d1;border-radius:9px;font-size:16px}.bottom button{width:max-content;padding:10px 16px;border:0;border-radius:9px;background:#3157d5;color:#fff;cursor:pointer}.result{font-weight:800}.pass{color:#16794b}.fail{color:#b42318}
+#agentTrap{position:fixed;left:12px;top:12px;width:300px;height:72vh;overflow-y:auto;background:#fff1f1;border:3px solid #d92d20;border-radius:12px;z-index:20;padding:12px;box-shadow:0 12px 28px rgba(0,0,0,.16)}
+#agentTrap h3{margin:0 0 8px}.trapRow{height:96px;border-top:1px solid #f1a7a7;padding-top:10px}.hint{font-size:13px;color:#b42318}.status{position:fixed;right:14px;top:14px;background:#fff;border:1px solid #d8e0ea;border-radius:10px;padding:10px 12px;z-index:15;font-size:13px}
+@media(max-width:1180px){#agentTrap{width:230px;opacity:.94}.shell{margin-left:245px}}
+</style>
+</head>
+<body>
+<aside id="agentTrap" data-page-agent-ignore="true" data-browser-use-ignore="true" aria-hidden="true">
+  <h3>IGNORE TRAP</h3>
+  <div class="hint">这是 Agent-owned 滚动诱饵。普通 scroll 不得滚动这里。</div>
+  <div id="trapRows"></div>
+</aside>
+<div class="status" id="status">app:0 · trap:0</div>
+<main id="appMain">
+  <div class="shell">
+    <section class="card">
+      <h1>B4.1 Scroll Isolation V2</h1>
+      <p>主文档本身不可滚；真正业务内容位于这个 App 主容器中。</p>
+      <p>请使用普通向下滚动找到底部令牌。不要对某个具体元素使用 indexed scroll。</p>
+    </section>
+    <div class="spacer">APP MAIN CONTENT · KEEP SCROLLING</div>
+    <section class="card bottom">
+      <div>底部令牌</div>
+      <div class="token" id="bottomToken">SCROLL-V2-731</div>
+      <label for="answer">把底部令牌填入这里：</label>
+      <input id="answer" aria-label="底部令牌输入" autocomplete="off" />
+      <button id="verify" type="button">验证滚动隔离</button>
+      <div class="result" id="result">WAITING</div>
+    </section>
+  </div>
+</main>
+<script>
+(()=>{
+  const app=document.getElementById('appMain');
+  const trap=document.getElementById('agentTrap');
+  const rows=document.getElementById('trapRows');
+  const status=document.getElementById('status');
+  let appEverScrolled=false;
+  for(let i=1;i<=28;i++){
+    const row=document.createElement('div');
+    row.className='trapRow';
+    row.textContent=`Ignored Agent row ${i}`;
+    rows.appendChild(row);
+  }
+  const render=()=>status.textContent=`app:${Math.round(app.scrollTop)} · trap:${Math.round(trap.scrollTop)}`;
+  app.addEventListener('scroll',()=>{if(app.scrollTop>40) appEverScrolled=true;render()});
+  trap.addEventListener('scroll',render);
+  render();
+  document.getElementById('verify').addEventListener('click',()=>{
+    const value=document.getElementById('answer').value.trim();
+    const ok=value==='SCROLL-V2-731' && appEverScrolled && trap.scrollTop===0;
+    const result=document.getElementById('result');
+    result.textContent=ok?'PASS: upstream scroll ignored Agent UI':'FAIL: token/scroll isolation check failed';
+    result.className='result '+(ok?'pass':'fail');
+  });
+})();
+</script>
+</body>
+</html>
