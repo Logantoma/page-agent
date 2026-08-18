@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>B4.4 Form Control Semantics</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#eef2f7;color:#172033}main{min-height:100vh;display:grid;place-items:center;padding:32px}.card{width:min(620px,92vw);background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:28px;box-shadow:0 12px 36px rgba(20,30,50,.08);display:grid;gap:18px}.field{display:grid;gap:8px;font-weight:650}.field select,.field input{height:44px;padding:0 12px;border:1px solid #aeb9c9;border-radius:9px;font-size:16px;background:#fff;font-weight:400}.check{display:flex;align-items:center;gap:9px;font-weight:650}.submit{height:44px;width:max-content;padding:0 18px;border:0;border-radius:9px;background:#3157d5;color:#fff;font-weight:750;cursor:pointer}.result{font-weight:850}.pass{color:#16794b}.fail{color:#b42318}.diag{font-size:13px;color:#475467;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+<section class="card">
+  <h1>B4.4 表单控件语义探针</h1>
+  <p>这是通用后台表单兼容性测试。请直接操作真正的表单控件，不要把字段标签本身当作输入控件。</p>
+
+  <label class="field" for="channel">
+    <span>处理通道</span>
+    <select id="channel">
+      <option value="">请选择</option>
+      <option value="standard">Standard</option>
+      <option value="priority">Priority</option>
+      <option value="manual">Manual</option>
+    </select>
+  </label>
+
+  <label class="field" for="code">
+    <span>供应商校验码</span>
+    <input id="code" autocomplete="off" placeholder="填写校验码" />
+  </label>
+
+  <label class="check" for="verified">
+    <input id="verified" type="checkbox" />
+    <span>已核对来源</span>
+  </label>
+
+  <button class="submit" id="submit" type="button">提交表单</button>
+  <div class="result" id="result">WAITING</div>
+  <div class="diag" id="diag">directLabelClicks:0</div>
+</section>
+</main>
+<script>
+(()=>{
+  let directLabelClicks=0;
+  const diag=document.getElementById('diag');
+  document.querySelectorAll('label').forEach((label)=>{
+    label.addEventListener('click',(event)=>{
+      if(event.target===label){
+        directLabelClicks++;
+        diag.textContent=`directLabelClicks:${directLabelClicks}`;
+      }
+    });
+  });
+
+  document.getElementById('submit').addEventListener('click',()=>{
+    const ok=
+      document.getElementById('channel').value==='priority' &&
+      document.getElementById('code').value.trim()==='VND-583' &&
+      document.getElementById('verified').checked &&
+      directLabelClicks===0;
+    const result=document.getElementById('result');
+    result.textContent=ok?'PASS: native form controls used directly':'FAIL: form control semantics check failed';
+    result.className='result '+(ok?'pass':'fail');
+    diag.textContent=`directLabelClicks:${directLabelClicks}`;
+  });
+})();
+</script>
+</body>
+</html>
