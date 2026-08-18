@@ -1,11 +1,11 @@
 {
     "extName": {
-        "message": "Page Agent Ext"
+        "message": "PsySquid Web"
     },
     "extDescription": {
-        "message": "AI-powered browser automation assistant. Control web pages with natural language."
+        "message": "PsySquid Web browser assistant for natural-language web automation."
     },
     "extActionTitle": {
-        "message": "Open Page Agent"
+        "message": "Open PsySquid Web settings"
     }
 }
