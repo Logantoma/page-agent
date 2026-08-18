@@ -11,7 +11,7 @@
 </style>
 </head>
 <body>
-<div class="diag" id="diag"><strong>B4.3</strong><br>table:0 · canvas:0 · form:0 · ref:0</div>
+<div class="diag" id="diag"><strong>B4.3</strong><br>table:0 · canvas:0 · return:0 · ref:0</div>
 <main id="workArea">
   <div class="shell">
     <section class="card" id="briefSection">
@@ -22,7 +22,7 @@
         <div class="rule"><strong>统计条件：</strong>地区 = 华南；季度 = Q3；状态 = 已验收。</div>
         <div class="rule"><strong>金额规则：</strong>每条金额 = 数量 × 单价；把所有符合条件的记录金额相加，得到“核验总额”。</div>
         <div class="rule"><strong>图形规则：</strong>在后面的 Canvas 四个 2×2 图形中，选择“恰好有 3 个黑格，并且主对角线左上、右下两个格都为黑色”的唯一选项。</div>
-        <div class="rule"><strong>参考页：</strong>完成总额和图形答案后，使用浏览器的新标签页工具打开参考页，根据“总额区间 + 图形答案”查到审批码，再切回本页提交。</div>
+        <div class="rule"><strong>流程要求：</strong>先读表格计算总额；经过中部表单继续下滚读取 Canvas；得到图形答案后必须回到中部表单，再打开参考页新标签查询审批码并切回提交。</div>
       </div>
     </section>
 
@@ -45,22 +45,14 @@
       <div class="formula">按顶部条件筛选后，再计算 Σ(数量 × 单价)。</div>
     </section>
 
-    <div class="spacer">继续向下，读取 Canvas 图形</div>
-
-    <section class="card" id="canvasSection">
-      <div class="sectionTag">Step 3 · Visual</div>
-      <h2>Canvas 图形核验</h2>
-      <p>按顶部图形规则，在 A–D 中选出唯一符合条件的图形。</p>
-      <div class="canvasWrap"><canvas id="visualCanvas" width="720" height="190" aria-label="四个 Canvas 图形选项 A 到 D"></canvas></div>
-    </section>
-
-    <div class="spacer">得到图形答案后，回到下面表单并准备跨标签页查询</div>
+    <div class="spacer">继续向下经过中部表单；此时先不要提交</div>
 
     <section class="card" id="formSection">
-      <div class="sectionTag">Step 4–7 · Form + reference tab</div>
-      <h2>核验提交</h2>
+      <div class="sectionTag">Step 3 / Step 5–7 · Mid-page form</div>
+      <h2>核验提交表单</h2>
+      <p><strong>第一次经过这里时不要提交。</strong>继续向下完成 Canvas 图形核验；得到图形答案后再反向滚动回到本表单。</p>
       <div class="referenceBox">参考页 URL：<code id="referenceUrl"></code></div>
-      <p>请使用 <strong>open_new_tab</strong> 打开该 URL，在参考页按“核验总额所在区间 + 图形答案”查审批码；然后使用 <strong>switch_to_tab</strong> 切回本页。</p>
+      <p>回到这里后，使用 <strong>open_new_tab</strong> 打开上述 URL，在参考页按“核验总额所在区间 + 图形答案”查审批码；然后使用 <strong>switch_to_tab</strong> 切回本页。</p>
       <div class="formGrid">
         <label>核验总额
           <input id="totalInput" type="number" inputmode="numeric" aria-label="核验总额" />
@@ -77,6 +69,15 @@
       </div>
       <div class="result" id="result">WAITING: 尚未提交</div>
     </section>
+
+    <div class="spacer">继续向下读取 Canvas；完成后必须反向滚回中部表单</div>
+
+    <section class="card" id="canvasSection">
+      <div class="sectionTag">Step 4 · Visual</div>
+      <h2>Canvas 图形核验</h2>
+      <p>按顶部图形规则，在 A–D 中选出唯一符合条件的图形。完成后请向上返回中部表单。</p>
+      <div class="canvasWrap"><canvas id="visualCanvas" width="720" height="190" aria-label="四个 Canvas 图形选项 A 到 D"></canvas></div>
+    </section>
     <div class="footerSpace"></div>
   </div>
 </main>
@@ -89,20 +90,23 @@
   const canvasSection=document.getElementById('canvasSection');
   const form=document.getElementById('formSection');
   const diag=document.getElementById('diag');
-  const flags={table:false,canvas:false,form:false};
+  const flags={table:false,canvas:false,form:false,returned:false};
   const referencePath='/page-agent/manual-test/multistep-task-reference.html';
   document.getElementById('referenceUrl').textContent=location.origin+referencePath;
 
   const renderDiag=()=>{
     const ref=localStorage.getItem(KEY)==='1';
-    diag.innerHTML=`<strong>B4.3</strong><br>table:${flags.table?1:0} · canvas:${flags.canvas?1:0} · form:${flags.form?1:0} · ref:${ref?1:0}`;
+    diag.innerHTML=`<strong>B4.3</strong><br>table:${flags.table?1:0} · canvas:${flags.canvas?1:0} · return:${flags.returned?1:0} · ref:${ref?1:0}`;
   };
   const observer=new IntersectionObserver((entries)=>{
     for(const entry of entries){
       if(!entry.isIntersecting) continue;
       if(entry.target===table) flags.table=true;
       if(entry.target===canvasSection) flags.canvas=true;
-      if(entry.target===form) flags.form=true;
+      if(entry.target===form){
+        if(flags.canvas) flags.returned=true;
+        flags.form=true;
+      }
     }
     renderDiag();
   },{root:work,threshold:0.25});
@@ -114,12 +118,7 @@
   const x=c.getContext('2d');
   x.clearRect(0,0,c.width,c.height);
   x.font='700 20px system-ui';x.fillStyle='#344054';x.textAlign='center';
-  const patterns={
-    A:[[1,0],[0,1]],
-    B:[[1,1],[0,1]],
-    C:[[1,1],[1,0]],
-    D:[[1,1],[1,1]],
-  };
+  const patterns={A:[[1,0],[0,1]],B:[[1,1],[0,1]],C:[[1,1],[1,0]],D:[[1,1],[1,1]]};
   const drawGrid=(cx,label,p)=>{
     const s=54,left=cx-s,top=42;
     x.strokeStyle='#667085';x.lineWidth=2;x.strokeRect(left,top,s*2,s*2);
@@ -138,7 +137,7 @@
     const checks={
       tableVisited:flags.table,
       canvasVisited:flags.canvas,
-      formVisited:flags.form,
+      returnedToFormAfterCanvas:flags.returned,
       referenceVisited:ref,
       totalCorrect:total==='957',
       visualCorrect:visual==='B',
