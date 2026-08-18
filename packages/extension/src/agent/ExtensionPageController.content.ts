@@ -2,6 +2,7 @@ import { PageController } from '@page-agent/page-controller'
 
 import { withAgentUiHitTestIsolation } from './AgentUiHitTestIsolation.content'
 import { withAgentUiScrollIsolation } from './AgentUiScrollIsolation.content'
+import { withRedundantFormLabelIsolation } from './FormLabelIsolation.content'
 
 type ScrollOptions = Parameters<PageController['scroll']>[0]
 
@@ -13,7 +14,9 @@ type ScrollOptions = Parameters<PageController['scroll']>[0]
  */
 export class ExtensionPageController extends PageController {
 	override async updateTree(): Promise<string> {
-		return withAgentUiHitTestIsolation(() => super.updateTree())
+		return withAgentUiHitTestIsolation(() =>
+			withRedundantFormLabelIsolation(() => super.updateTree())
+		)
 	}
 
 	override async scroll(options: ScrollOptions) {
