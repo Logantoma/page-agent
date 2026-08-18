@@ -8,6 +8,15 @@ import { ExtensionPageController } from './ExtensionPageController.content'
 export function initPageController() {
 	let pageController: PageController | null = null
 	let intervalID: number | null = null
+	const isTopFrame = window.top === window
+
+	// Register this isolated-world frame with the background service worker. The
+	// sender metadata provides the authoritative tabId/frameId/documentId.
+	chrome.runtime
+		.sendMessage({ type: 'PAGE_CONTROL', action: 'register_frame' })
+		.catch((error) =>
+			console.error('[RemotePageController.ContentScript]: Failed to register frame', error)
+		)
 
 	const myTabIdPromise = chrome.runtime
 		.sendMessage({ type: 'PAGE_CONTROL', action: 'get_my_tab_id' })
@@ -29,44 +38,41 @@ export function initPageController() {
 		return pageController
 	}
 
-	intervalID = window.setInterval(async () => {
-		const agentHeartbeat = (await chrome.storage.local.get('agentHeartbeat')).agentHeartbeat
-		const now = Date.now()
-		const agentInTouch = typeof agentHeartbeat === 'number' && now - agentHeartbeat < 2_000
+	// Only the top frame owns the task mask lifecycle. Child frames still expose
+	// PageController RPC, but must not duplicate the Agent UI/mask infrastructure.
+	if (isTopFrame) {
+		intervalID = window.setInterval(async () => {
+			const agentHeartbeat = (await chrome.storage.local.get('agentHeartbeat')).agentHeartbeat
+			const now = Date.now()
+			const agentInTouch = typeof agentHeartbeat === 'number' && now - agentHeartbeat < 2_000
 
-		const isAgentRunning = (await chrome.storage.local.get('isAgentRunning')).isAgentRunning
-		const currentTabId = (await chrome.storage.local.get('currentTabId')).currentTabId
+			const isAgentRunning = (await chrome.storage.local.get('isAgentRunning')).isAgentRunning
+			const currentTabId = (await chrome.storage.local.get('currentTabId')).currentTabId
 
-		const shouldShowMask = isAgentRunning && agentInTouch && currentTabId === (await myTabIdPromise)
+			const shouldShowMask = isAgentRunning && agentInTouch && currentTabId === (await myTabIdPromise)
 
-		if (shouldShowMask) {
-			const pc = getPC()
-			pc.initMask()
-			await pc.showMask()
-		} else {
-			// await getPC().hideMask()
-			if (pageController) {
-				pageController.hideMask()
-				pageController.cleanUpHighlights()
+			if (shouldShowMask) {
+				const pc = getPC()
+				pc.initMask()
+				await pc.showMask()
+			} else {
+				if (pageController) {
+					pageController.hideMask()
+					pageController.cleanUpHighlights()
+				}
 			}
-		}
 
-		if (!isAgentRunning && agentInTouch) {
-			if (pageController) {
-				pageController.dispose()
-				pageController = null
+			if (!isAgentRunning && agentInTouch) {
+				if (pageController) {
+					pageController.dispose()
+					pageController = null
+				}
 			}
-		}
-	}, 500)
+		}, 500)
+	}
 
 	chrome.runtime.onMessage.addListener((message, sender, sendResponse): true | undefined => {
-		if (message.type !== 'PAGE_CONTROL') {
-			// sendResponse({
-			// 	success: false,
-			// 	error: `[RemotePageController.ContentScript]: Invalid message type: ${message.type}`,
-			// })
-			return
-		}
+		if (message.type !== 'PAGE_CONTROL') return
 
 		const { action, payload } = message
 		const methodName = getMethodName(action)
@@ -103,6 +109,12 @@ export function initPageController() {
 
 		return true
 	})
+
+	return () => {
+		if (intervalID !== null) window.clearInterval(intervalID)
+		pageController?.dispose()
+		pageController = null
+	}
 }
 
 function getMethodName(action: string): string {
