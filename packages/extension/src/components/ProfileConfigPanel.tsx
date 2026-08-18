@@ -14,7 +14,6 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { createUserProfile, deleteUserProfile, updateUserProfile } from '@/agent/LlmProfileCrud'
-import { readPersistedProfileStore, writeProfileStoreVerified } from '@/agent/LlmProfilePersistence'
 import {
 	BUILTIN_DEMO_PROFILE_ID,
 	LLM_PROFILE_STORE_KEY,
@@ -30,6 +29,10 @@ import {
 	resolveActiveProfile,
 	serializeLlmProfileConfig,
 } from '@/agent/LlmProfileStore'
+import {
+	readPersistedProfileStore,
+	writeProfileStoreVerified,
+} from '@/agent/LlmProfilePersistence'
 import { DEMO_BASE_URL, DEMO_MODEL } from '@/agent/constants'
 import type { ExtConfig, LanguagePreference } from '@/agent/useAgent'
 import { Button } from '@/components/ui/button'
@@ -94,7 +97,7 @@ export function ProfileConfigPanel({
 	const isRunning = status === 'running'
 	const editingProfile =
 		editor?.mode === 'edit'
-			? (profileStore.profiles.find(({ id }) => id === editor.profileId) ?? null)
+			? profileStore.profiles.find(({ id }) => id === editor.profileId) ?? null
 			: null
 	const editingIsActive = Boolean(
 		editingProfile && profileStore.activeProfileId === editingProfile.id
@@ -150,7 +153,7 @@ export function ProfileConfigPanel({
 	}, [])
 
 	const activeLabel = useMemo(() => {
-		if (profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID) return 'PsySquid Web 演示配置'
+		if (profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID) return 'Page Agent 演示配置'
 		return (
 			profileStore.profiles.find(({ id }) => id === profileStore.activeProfileId)?.name ??
 			'未知配置'
@@ -299,13 +302,7 @@ export function ProfileConfigPanel({
 					<h2 className="text-base font-semibold">设置</h2>
 					<p className="text-[10px] text-muted-foreground">当前 API：{activeLabel}</p>
 				</div>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					onClick={onClose}
-					aria-label="返回"
-					className="cursor-pointer"
-				>
+				<Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="返回" className="cursor-pointer">
 					<CornerUpLeft className="size-3.5" />
 				</Button>
 			</header>
@@ -318,10 +315,7 @@ export function ProfileConfigPanel({
 				)}
 
 				{pageError && (
-					<div
-						role="alert"
-						className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-[11px] text-destructive"
-					>
+					<div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-[11px] text-destructive">
 						{pageError}
 					</div>
 				)}
@@ -332,19 +326,14 @@ export function ProfileConfigPanel({
 							<h3 className="text-sm font-semibold">API 配置</h3>
 							<p className="text-[10px] text-muted-foreground">点击配置进入二级卡片查看或编辑。</p>
 						</div>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={openCreateEditor}
-							className="h-7 gap-1 text-[11px] cursor-pointer"
-						>
+						<Button variant="outline" size="sm" onClick={openCreateEditor} className="h-7 gap-1 text-[11px] cursor-pointer">
 							<Plus className="size-3" /> 添加 API
 						</Button>
 					</div>
 
 					<div className="space-y-1.5">
 						<ProfileListRow
-							name="PsySquid Web Demo"
+							name="Page Agent Demo"
 							detail={DEMO_MODEL}
 							active={profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID}
 							onOpen={undefined}
@@ -392,61 +381,30 @@ export function ProfileConfigPanel({
 						</select>
 					</Field>
 
-					<button
-						type="button"
-						onClick={() => setAdvancedOpen((value) => !value)}
-						className="text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
-					>
+					<button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer">
 						{advancedOpen ? '收起高级设置' : '显示高级设置'}
 					</button>
 
 					{advancedOpen && (
 						<div className="space-y-3">
 							<Field label="最大步骤数">
-								<Input
-									type="number"
-									min={1}
-									max={200}
-									value={maxSteps ?? ''}
-									onChange={(e) => setMaxSteps(e.target.value ? Number(e.target.value) : undefined)}
-									disabled={isRunning}
-									className="h-8 text-xs"
-								/>
+								<Input type="number" min={1} max={200} value={maxSteps ?? ''} onChange={(e) => setMaxSteps(e.target.value ? Number(e.target.value) : undefined)} disabled={isRunning} className="h-8 text-xs" />
 							</Field>
 							<Field label="系统指令">
-								<textarea
-									value={systemInstruction}
-									onChange={(e) => setSystemInstruction(e.target.value)}
-									disabled={isRunning}
-									rows={3}
-									placeholder="给 Agent 的附加指令..."
-									className="min-h-[60px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-xs"
-								/>
+								<textarea value={systemInstruction} onChange={(e) => setSystemInstruction(e.target.value)} disabled={isRunning} rows={3} placeholder="给 Agent 的附加指令..." className="min-h-[60px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-xs" />
 							</Field>
 							<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
 								<span>实验性 llms.txt 支持</span>
-								<Switch
-									checked={experimentalLlmsTxt}
-									onCheckedChange={setExperimentalLlmsTxt}
-									disabled={isRunning}
-								/>
+								<Switch checked={experimentalLlmsTxt} onCheckedChange={setExperimentalLlmsTxt} disabled={isRunning} />
 							</label>
 							<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
 								<span>实验性包含所有标签页</span>
-								<Switch
-									checked={experimentalIncludeAllTabs}
-									onCheckedChange={setExperimentalIncludeAllTabs}
-									disabled={isRunning}
-								/>
+								<Switch checked={experimentalIncludeAllTabs} onCheckedChange={setExperimentalIncludeAllTabs} disabled={isRunning} />
 							</label>
 						</div>
 					)}
 
-					<Button
-						onClick={handleSaveGlobal}
-						disabled={savingGlobal || isRunning || !config}
-						className="h-8 w-full text-xs cursor-pointer"
-					>
+					<Button onClick={handleSaveGlobal} disabled={savingGlobal || isRunning || !config} className="h-8 w-full text-xs cursor-pointer">
 						{savingGlobal ? '保存中...' : '保存全局设置'}
 					</Button>
 				</section>
@@ -458,40 +416,17 @@ export function ProfileConfigPanel({
 							<p className="text-[10px] text-muted-foreground">允许网站调用此扩展。</p>
 						</div>
 						<div className="flex gap-2">
-							<Input
-								readOnly
-								value={maskedToken(userAuthToken, showToken)}
-								className="h-8 bg-background font-mono text-xs"
-							/>
-							<Button
-								variant="outline"
-								size="icon"
-								className="h-8 w-8 shrink-0 cursor-pointer"
-								disabled={!userAuthToken}
-								onClick={() => setShowToken((value) => !value)}
-								aria-label={showToken ? '隐藏令牌' : '显示令牌'}
-							>
+							<Input readOnly value={maskedToken(userAuthToken, showToken)} className="h-8 bg-background font-mono text-xs" />
+							<Button variant="outline" size="icon" className="h-8 w-8 shrink-0 cursor-pointer" disabled={!userAuthToken} onClick={() => setShowToken((value) => !value)} aria-label={showToken ? '隐藏令牌' : '显示令牌'}>
 								{showToken ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
 							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								className="h-8 w-8 shrink-0 cursor-pointer"
-								disabled={!userAuthToken}
-								onClick={handleCopyToken}
-								aria-label="复制令牌"
-							>
+							<Button variant="outline" size="icon" className="h-8 w-8 shrink-0 cursor-pointer" disabled={!userAuthToken} onClick={handleCopyToken} aria-label="复制令牌">
 								{copied ? <Check className="size-3" /> : <Copy className="size-3" />}
 							</Button>
 						</div>
 					</div>
 
-					<a
-						href="/hub.html"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-					>
+					<a href="/hub.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
 						管理 Page Agent Hub
 						<ExternalLink className="size-3" />
 					</a>
@@ -542,35 +477,22 @@ function ProfileListRow({
 }) {
 	return (
 		<div className="flex items-center gap-2 rounded-md border bg-background p-2">
-			<button
-				type="button"
-				onClick={onOpen}
-				disabled={!onOpen}
-				className="min-w-0 flex-1 text-left disabled:cursor-default"
-			>
-				<div className="flex items-center gap-2">
-					<div className="min-w-0 flex-1">
-						<div className="truncate text-xs font-medium">{name}</div>
-						<div className="truncate text-[10px] text-muted-foreground">{detail}</div>
-					</div>
-					{onOpen && <Pencil className="size-3 shrink-0 text-muted-foreground" />}
+		<button type="button" onClick={onOpen} disabled={!onOpen} className="min-w-0 flex-1 text-left disabled:cursor-default">
+			<div className="flex items-center gap-2">
+				<div className="min-w-0 flex-1">
+					<div className="truncate text-xs font-medium">{name}</div>
+					<div className="truncate text-[10px] text-muted-foreground">{detail}</div>
 				</div>
-			</button>
-			{active ? (
-				<span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[9px] text-background">
-					当前
-				</span>
-			) : onActivate ? (
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={onActivate}
-					disabled={activateDisabled}
-					className="h-7 shrink-0 px-2 text-[10px] cursor-pointer"
-				>
-					使用
-				</Button>
-			) : null}
+				{onOpen && <Pencil className="size-3 shrink-0 text-muted-foreground" />}
+			</div>
+		</button>
+		{active ? (
+			<span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[9px] text-background">当前</span>
+		) : onActivate ? (
+			<Button variant="outline" size="sm" onClick={onActivate} disabled={activateDisabled} className="h-7 shrink-0 px-2 text-[10px] cursor-pointer">
+				使用
+			</Button>
+		) : null}
 		</div>
 	)
 }
@@ -610,29 +532,15 @@ function ProfileEditorCard({
 }) {
 	return (
 		<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 p-3 backdrop-blur-[1px]">
-			<div
-				role="dialog"
-				aria-modal="true"
-				aria-label={mode === 'create' ? '新增 API 配置' : '编辑 API 配置'}
-				className="flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-xl border bg-background shadow-xl"
-			>
+			<div role="dialog" aria-modal="true" aria-label={mode === 'create' ? '新增 API 配置' : '编辑 API 配置'} className="flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-xl border bg-background shadow-xl">
 				<div className="flex items-start justify-between border-b px-4 py-3">
 					<div>
-						<div className="text-sm font-semibold">
-							{mode === 'create' ? '新增 API' : 'API 配置详情'}
-						</div>
+						<div className="text-sm font-semibold">{mode === 'create' ? '新增 API' : 'API 配置详情'}</div>
 						<div className="text-[10px] text-muted-foreground">
 							{active ? '当前正在使用' : mode === 'create' ? '保存后不会自动启用' : '未启用配置'}
 						</div>
 					</div>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						onClick={onClose}
-						disabled={saving}
-						aria-label="关闭"
-						className="cursor-pointer"
-					>
+					<Button variant="ghost" size="icon-sm" onClick={onClose} disabled={saving} aria-label="关闭" className="cursor-pointer">
 						<X className="size-3.5" />
 					</Button>
 				</div>
@@ -644,10 +552,7 @@ function ProfileEditorCard({
 						</div>
 					)}
 					{error && (
-						<div
-							role="alert"
-							className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-[11px] text-destructive"
-						>
+						<div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-[11px] text-destructive">
 							{error}
 						</div>
 					)}
@@ -655,76 +560,28 @@ function ProfileEditorCard({
 					<div className="space-y-2">
 						<div className="text-xs font-medium">服务商</div>
 						<div className="grid grid-cols-3 gap-2">
-							<ProviderChoice
-								label="DeepSeek"
-								detail="官方"
-								selected={draft.provider === 'deepseek'}
-								disabled={locked}
-								onClick={() => onProviderChange('deepseek')}
-							/>
-							<ProviderChoice
-								label="SiliconFlow"
-								detail="硅基流动"
-								selected={draft.provider === 'siliconflow'}
-								disabled={locked}
-								onClick={() => onProviderChange('siliconflow')}
-							/>
-							<ProviderChoice
-								label="自定义"
-								detail="OpenAI 兼容"
-								selected={draft.provider === 'custom'}
-								disabled={locked}
-								onClick={() => onProviderChange('custom')}
-							/>
+							<ProviderChoice label="DeepSeek" detail="官方" selected={draft.provider === 'deepseek'} disabled={locked} onClick={() => onProviderChange('deepseek')} />
+							<ProviderChoice label="SiliconFlow" detail="硅基流动" selected={draft.provider === 'siliconflow'} disabled={locked} onClick={() => onProviderChange('siliconflow')} />
+							<ProviderChoice label="自定义" detail="OpenAI 兼容" selected={draft.provider === 'custom'} disabled={locked} onClick={() => onProviderChange('custom')} />
 						</div>
 					</div>
 
 					<Field label="配置名称">
-						<Input
-							value={draft.name}
-							onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))}
-							disabled={locked}
-							className="h-8 text-xs"
-						/>
+						<Input value={draft.name} onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))} disabled={locked} className="h-8 text-xs" />
 					</Field>
 
 					<Field label="接口地址">
-						<Input
-							value={draft.baseURL}
-							onChange={(e) => setDraft((current) => ({ ...current, baseURL: e.target.value }))}
-							disabled={locked}
-							placeholder="https://api.example.com/v1"
-							className="h-8 text-xs"
-						/>
+						<Input value={draft.baseURL} onChange={(e) => setDraft((current) => ({ ...current, baseURL: e.target.value }))} disabled={locked} placeholder="https://api.example.com/v1" className="h-8 text-xs" />
 					</Field>
 
 					<Field label="模型">
-						<Input
-							value={draft.model}
-							onChange={(e) => setDraft((current) => ({ ...current, model: e.target.value }))}
-							disabled={locked}
-							placeholder={modelPlaceholder(draft.provider)}
-							className="h-8 text-xs"
-						/>
+						<Input value={draft.model} onChange={(e) => setDraft((current) => ({ ...current, model: e.target.value }))} disabled={locked} placeholder={modelPlaceholder(draft.provider)} className="h-8 text-xs" />
 					</Field>
 
 					<Field label="API 密钥">
 						<div className="flex gap-2">
-							<Input
-								type={showApiKey ? 'text' : 'password'}
-								value={draft.apiKey}
-								onChange={(e) => setDraft((current) => ({ ...current, apiKey: e.target.value }))}
-								disabled={locked}
-								className="h-8 text-xs"
-							/>
-							<Button
-								variant="outline"
-								size="icon"
-								className="h-8 w-8 shrink-0 cursor-pointer"
-								onClick={onToggleApiKey}
-								disabled={locked}
-								aria-label={showApiKey ? '隐藏 API 密钥' : '显示 API 密钥'}
-							>
+							<Input type={showApiKey ? 'text' : 'password'} value={draft.apiKey} onChange={(e) => setDraft((current) => ({ ...current, apiKey: e.target.value }))} disabled={locked} className="h-8 text-xs" />
+							<Button variant="outline" size="icon" className="h-8 w-8 shrink-0 cursor-pointer" onClick={onToggleApiKey} disabled={locked} aria-label={showApiKey ? '隐藏 API 密钥' : '显示 API 密钥'}>
 								{showApiKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
 							</Button>
 						</div>
@@ -732,83 +589,34 @@ function ProfileEditorCard({
 
 					<div className="grid grid-cols-2 gap-2">
 						<Field label="温度">
-							<Input
-								type="number"
-								step="0.1"
-								value={draft.temperature}
-								onChange={(e) =>
-									setDraft((current) => ({ ...current, temperature: e.target.value }))
-								}
-								disabled={locked}
-								className="h-8 text-xs"
-							/>
+							<Input type="number" step="0.1" value={draft.temperature} onChange={(e) => setDraft((current) => ({ ...current, temperature: e.target.value }))} disabled={locked} className="h-8 text-xs" />
 						</Field>
 						<Field label="最大重试次数">
-							<Input
-								type="number"
-								min={0}
-								value={draft.maxRetries}
-								onChange={(e) =>
-									setDraft((current) => ({ ...current, maxRetries: e.target.value }))
-								}
-								disabled={locked}
-								className="h-8 text-xs"
-							/>
+							<Input type="number" min={0} value={draft.maxRetries} onChange={(e) => setDraft((current) => ({ ...current, maxRetries: e.target.value }))} disabled={locked} className="h-8 text-xs" />
 						</Field>
 					</div>
 
 					<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
 						<span>禁用指定工具 tool_choice</span>
-						<Switch
-							checked={draft.disableNamedToolChoice}
-							onCheckedChange={(checked) =>
-								setDraft((current) => ({ ...current, disableNamedToolChoice: checked }))
-							}
-							disabled={locked}
-						/>
+						<Switch checked={draft.disableNamedToolChoice} onCheckedChange={(checked) => setDraft((current) => ({ ...current, disableNamedToolChoice: checked }))} disabled={locked} />
 					</label>
 				</div>
 
 				<div className="flex items-center gap-2 border-t p-3">
 					{onDelete && (
-						<Button
-							variant="destructive"
-							size="sm"
-							onClick={onDelete}
-							disabled={saving || locked}
-							className="h-8 gap-1 text-xs cursor-pointer"
-						>
+						<Button variant="destructive" size="sm" onClick={onDelete} disabled={saving || locked} className="h-8 gap-1 text-xs cursor-pointer">
 							<Trash2 className="size-3" /> 删除
 						</Button>
 					)}
 					{onActivate && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={onActivate}
-							disabled={saving || activateDisabled}
-							className="h-8 text-xs cursor-pointer"
-						>
+						<Button variant="outline" size="sm" onClick={onActivate} disabled={saving || activateDisabled} className="h-8 text-xs cursor-pointer">
 							使用此配置
 						</Button>
 					)}
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onClose}
-						disabled={saving}
-						className="ml-auto h-8 text-xs cursor-pointer"
-					>
+					<Button variant="outline" size="sm" onClick={onClose} disabled={saving} className="ml-auto h-8 text-xs cursor-pointer">
 						取消
 					</Button>
-					<Button
-						size="sm"
-						onClick={onSave}
-						disabled={
-							saving || locked || !draft.name.trim() || !draft.baseURL.trim() || !draft.model.trim()
-						}
-						className="h-8 text-xs cursor-pointer"
-					>
+					<Button size="sm" onClick={onSave} disabled={saving || locked || !draft.name.trim() || !draft.baseURL.trim() || !draft.model.trim()} className="h-8 text-xs cursor-pointer">
 						{saving ? '保存中...' : mode === 'create' ? '保存 API' : '保存修改'}
 					</Button>
 				</div>
@@ -831,12 +639,7 @@ function ProviderChoice({
 	onClick: () => void
 }) {
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
-			className={`rounded-md border p-2 text-left transition-colors disabled:opacity-50 ${selected ? 'border-foreground/40 bg-muted/70' : 'bg-background hover:bg-muted/40'}`}
-		>
+		<button type="button" onClick={onClick} disabled={disabled} className={`rounded-md border p-2 text-left transition-colors disabled:opacity-50 ${selected ? 'border-foreground/40 bg-muted/70' : 'bg-background hover:bg-muted/40'}`}>
 			<div className="truncate text-[11px] font-medium">{label}</div>
 			<div className="truncate text-[9px] text-muted-foreground">{detail}</div>
 		</button>
