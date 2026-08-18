@@ -87,6 +87,15 @@ describe('ScrollPolicy', () => {
 		expect(target?.element).not.toBe(largeMain)
 	})
 
+	it('ignores offscreen fallback containers when a visible app container exists', () => {
+		const offscreen = makeScrollable('offscreen', 760, 4000, 1150)
+		offscreen.getBoundingClientRect = () => rect(0, 1200, 1150, 760)
+		const visible = makeScrollable('visible', 650, 2200, 900)
+
+		const target = selectDefaultVerticalScrollTarget()
+		expect(target).toEqual({ kind: 'container', element: visible })
+	})
+
 	it('returns a stable warning when neither page nor eligible containers can scroll', () => {
 		expect(selectDefaultVerticalScrollTarget()).toBeNull()
 		expect(scrollVerticallyWithPolicy(400)).toBe(
@@ -116,18 +125,21 @@ function setScrollableBox(
 		scrollHeight,
 		scrollTop: 0,
 	})
-	element.getBoundingClientRect = () =>
-		({
-			x: 0,
-			y: 0,
-			top: 0,
-			left: 0,
-			right: width,
-			bottom: clientHeight,
-			width,
-			height: clientHeight,
-			toJSON: () => ({}),
-		}) as DOMRect
+	element.getBoundingClientRect = () => rect(0, 0, width, clientHeight)
+}
+
+function rect(left: number, top: number, width: number, height: number): DOMRect {
+	return {
+		x: left,
+		y: top,
+		top,
+		left,
+		right: left + width,
+		bottom: top + height,
+		width,
+		height,
+		toJSON: () => ({}),
+	} as DOMRect
 }
 
 function setBox(
