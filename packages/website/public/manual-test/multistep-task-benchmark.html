@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>B4.3 Multi-step Task Benchmark</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#eef2f7;color:#172033;overflow:hidden}
+#workArea{height:100vh;overflow-y:auto;padding:28px}.shell{max-width:900px;margin:0 auto}.card{background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:24px;box-shadow:0 8px 26px rgba(20,30,50,.06)}h1,h2{margin-top:0}.rules{display:grid;gap:8px}.rule{padding:10px 12px;background:#f7f9fc;border-radius:10px}.spacer{height:68vh;display:grid;place-items:center;color:#7b8496;font-size:15px}.sectionTag{font-size:12px;font-weight:700;color:#3157d5;letter-spacing:.08em;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #d3dae6;padding:10px;text-align:center}th{background:#f3f6fa}.formula{margin-top:12px;padding:12px;background:#f8fafc;border-radius:10px;color:#475467}.canvasWrap{display:grid;place-items:center;padding:14px;border:1px dashed #cdd5df;border-radius:12px;background:#fff}canvas{max-width:100%;height:auto}.formGrid{display:grid;gap:13px;margin-top:16px}label{display:grid;gap:6px;font-weight:650}input,select{height:44px;border:1px solid #b7c1d1;border-radius:9px;padding:0 12px;font-size:16px;background:#fff}button{width:max-content;border:0;border-radius:10px;background:#3157d5;color:#fff;font-weight:700;padding:11px 17px;cursor:pointer}.referenceBox{margin-top:14px;padding:12px;border:1px solid #b8c6e8;background:#f7f9ff;border-radius:10px;word-break:break-all}.result{margin-top:14px;padding:14px;border-radius:10px;font-weight:800;background:#f8fafc}.pass{color:#16794b;background:#ecfdf3}.fail{color:#b42318;background:#fff1f0}.diag{position:fixed;right:14px;top:14px;z-index:30;background:#fff;border:1px solid #d8e0ea;border-radius:10px;padding:10px 12px;font-size:12px;box-shadow:0 8px 24px rgba(20,30,50,.10);line-height:1.6}.diag strong{font-weight:800}.footerSpace{height:36vh}
+@media(max-width:700px){#workArea{padding:18px}.card{padding:18px}.diag{position:static;margin:10px}.spacer{height:52vh}}
+</style>
+</head>
+<body>
+<div class="diag" id="diag"><strong>B4.3</strong><br>table:0 · canvas:0 · form:0 · ref:0</div>
+<main id="workArea">
+  <div class="shell">
+    <section class="card" id="briefSection">
+      <div class="sectionTag">Step 1 · Brief</div>
+      <h1>跨页业务核验任务</h1>
+      <p>请完整执行下面的业务流程，并最终提交表单。不要猜测；所有答案都来自本页数据、图形和参考页。</p>
+      <div class="rules">
+        <div class="rule"><strong>统计条件：</strong>地区 = 华南；季度 = Q3；状态 = 已验收。</div>
+        <div class="rule"><strong>金额规则：</strong>每条金额 = 数量 × 单价；把所有符合条件的记录金额相加，得到“核验总额”。</div>
+        <div class="rule"><strong>图形规则：</strong>在后面的 Canvas 四个 2×2 图形中，选择“恰好有 3 个黑格，并且主对角线左上、右下两个格都为黑色”的唯一选项。</div>
+        <div class="rule"><strong>参考页：</strong>完成总额和图形答案后，使用浏览器的新标签页工具打开参考页，根据“总额区间 + 图形答案”查到审批码，再切回本页提交。</div>
+      </div>
+    </section>
+
+    <div class="spacer">向下滚动读取业务明细表</div>
+
+    <section class="card" id="tableSection">
+      <div class="sectionTag">Step 2 · Data table</div>
+      <h2>业务明细</h2>
+      <table aria-label="业务明细表">
+        <thead><tr><th>记录</th><th>地区</th><th>季度</th><th>状态</th><th>数量</th><th>单价</th></tr></thead>
+        <tbody>
+          <tr><td>A-17</td><td>华南</td><td>Q3</td><td>已验收</td><td>12</td><td>37</td></tr>
+          <tr><td>B-08</td><td>华南</td><td>Q2</td><td>已验收</td><td>16</td><td>41</td></tr>
+          <tr><td>C-31</td><td>华北</td><td>Q3</td><td>已验收</td><td>9</td><td>52</td></tr>
+          <tr><td>D-22</td><td>华南</td><td>Q3</td><td>已验收</td><td>8</td><td>46</td></tr>
+          <tr><td>E-14</td><td>华南</td><td>Q3</td><td>处理中</td><td>20</td><td>18</td></tr>
+          <tr><td>F-09</td><td>华南</td><td>Q3</td><td>已验收</td><td>5</td><td>29</td></tr>
+        </tbody>
+      </table>
+      <div class="formula">按顶部条件筛选后，再计算 Σ(数量 × 单价)。</div>
+    </section>
+
+    <div class="spacer">继续向下，读取 Canvas 图形</div>
+
+    <section class="card" id="canvasSection">
+      <div class="sectionTag">Step 3 · Visual</div>
+      <h2>Canvas 图形核验</h2>
+      <p>按顶部图形规则，在 A–D 中选出唯一符合条件的图形。</p>
+      <div class="canvasWrap"><canvas id="visualCanvas" width="720" height="190" aria-label="四个 Canvas 图形选项 A 到 D"></canvas></div>
+    </section>
+
+    <div class="spacer">得到图形答案后，回到下面表单并准备跨标签页查询</div>
+
+    <section class="card" id="formSection">
+      <div class="sectionTag">Step 4–7 · Form + reference tab</div>
+      <h2>核验提交</h2>
+      <div class="referenceBox">参考页 URL：<code id="referenceUrl"></code></div>
+      <p>请使用 <strong>open_new_tab</strong> 打开该 URL，在参考页按“核验总额所在区间 + 图形答案”查审批码；然后使用 <strong>switch_to_tab</strong> 切回本页。</p>
+      <div class="formGrid">
+        <label>核验总额
+          <input id="totalInput" type="number" inputmode="numeric" aria-label="核验总额" />
+        </label>
+        <label>Canvas 图形答案
+          <select id="visualSelect" aria-label="Canvas 图形答案">
+            <option value="">请选择</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+          </select>
+        </label>
+        <label>参考页审批码
+          <input id="codeInput" type="text" aria-label="参考页审批码" autocomplete="off" />
+        </label>
+        <button id="submitBtn" type="button">提交完整核验</button>
+      </div>
+      <div class="result" id="result">WAITING: 尚未提交</div>
+    </section>
+    <div class="footerSpace"></div>
+  </div>
+</main>
+<script>
+(()=>{
+  const KEY='page-agent-b43-reference-visited';
+  localStorage.removeItem(KEY);
+  const work=document.getElementById('workArea');
+  const table=document.getElementById('tableSection');
+  const canvasSection=document.getElementById('canvasSection');
+  const form=document.getElementById('formSection');
+  const diag=document.getElementById('diag');
+  const flags={table:false,canvas:false,form:false};
+  const referencePath='/page-agent/manual-test/multistep-task-reference.html';
+  document.getElementById('referenceUrl').textContent=location.origin+referencePath;
+
+  const renderDiag=()=>{
+    const ref=localStorage.getItem(KEY)==='1';
+    diag.innerHTML=`<strong>B4.3</strong><br>table:${flags.table?1:0} · canvas:${flags.canvas?1:0} · form:${flags.form?1:0} · ref:${ref?1:0}`;
+  };
+  const observer=new IntersectionObserver((entries)=>{
+    for(const entry of entries){
+      if(!entry.isIntersecting) continue;
+      if(entry.target===table) flags.table=true;
+      if(entry.target===canvasSection) flags.canvas=true;
+      if(entry.target===form) flags.form=true;
+    }
+    renderDiag();
+  },{root:work,threshold:0.25});
+  observer.observe(table);observer.observe(canvasSection);observer.observe(form);
+  window.addEventListener('storage',renderDiag);
+  window.addEventListener('focus',renderDiag);
+
+  const c=document.getElementById('visualCanvas');
+  const x=c.getContext('2d');
+  x.clearRect(0,0,c.width,c.height);
+  x.font='700 20px system-ui';x.fillStyle='#344054';x.textAlign='center';
+  const patterns={
+    A:[[1,0],[0,1]],
+    B:[[1,1],[0,1]],
+    C:[[1,1],[1,0]],
+    D:[[1,1],[1,1]],
+  };
+  const drawGrid=(cx,label,p)=>{
+    const s=54,left=cx-s,top=42;
+    x.strokeStyle='#667085';x.lineWidth=2;x.strokeRect(left,top,s*2,s*2);
+    x.beginPath();x.moveTo(cx,top);x.lineTo(cx,top+s*2);x.moveTo(left,top+s);x.lineTo(left+s*2,top+s);x.stroke();
+    x.fillStyle='#111827';
+    for(let r=0;r<2;r++)for(let col=0;col<2;col++)if(p[r][col])x.fillRect(left+col*s+5,top+r*s+5,s-10,s-10);
+    x.fillStyle='#344054';x.fillText(label,cx,174);
+  };
+  [['A',90],['B',270],['C',450],['D',630]].forEach(([label,cx])=>drawGrid(cx,label,patterns[label]));
+
+  document.getElementById('submitBtn').addEventListener('click',()=>{
+    const total=document.getElementById('totalInput').value.trim();
+    const visual=document.getElementById('visualSelect').value;
+    const code=document.getElementById('codeInput').value.trim().toUpperCase();
+    const ref=localStorage.getItem(KEY)==='1';
+    const checks={
+      tableVisited:flags.table,
+      canvasVisited:flags.canvas,
+      formVisited:flags.form,
+      referenceVisited:ref,
+      totalCorrect:total==='957',
+      visualCorrect:visual==='B',
+      codeCorrect:code==='MINT-482',
+    };
+    const ok=Object.values(checks).every(Boolean);
+    const result=document.getElementById('result');
+    if(ok){
+      result.className='result pass';
+      result.textContent='PASS: B4.3 full multi-step task completed';
+    }else{
+      result.className='result fail';
+      const failed=Object.entries(checks).filter(([,v])=>!v).map(([k])=>k).join(', ');
+      result.textContent=`FAIL: ${failed}`;
+    }
+    renderDiag();
+  });
+  renderDiag();
+})();
+</script>
+</body>
+</html>
