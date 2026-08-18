@@ -39,3 +39,25 @@ export function rewriteFrameContent(
 
 	return { content: rewritten, nextIndex }
 }
+
+/**
+ * PageController action results are produced inside the target frame, so they mention
+ * frame-local indices. Rewrite those references back into the tab-global index space
+ * that the model originally acted on, otherwise a successful frame action can look
+ * like it targeted a different top-page element.
+ */
+export function rewriteFrameActionMessage(
+	message: string,
+	route: FrameIndexRoute,
+	globalIndex: number
+): string {
+	if (route.frameId === 0) return message
+
+	const localIndex = route.localIndex
+	let rewritten = message
+		.replace(new RegExp(`\\[${localIndex}\\]`, 'g'), `[${globalIndex}]`)
+		.replace(new RegExp(`\\(${localIndex}\\)`, 'g'), `(${globalIndex})`)
+		.replace(new RegExp(`\\bindex ${localIndex}\\b`, 'g'), `index ${globalIndex}`)
+
+	return `${rewritten} [frame ${route.frameId}]`
+}
