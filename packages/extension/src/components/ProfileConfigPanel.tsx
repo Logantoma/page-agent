@@ -153,7 +153,7 @@ export function ProfileConfigPanel({
 	}, [])
 
 	const activeLabel = useMemo(() => {
-		if (profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID) return 'Page Agent 演示配置'
+		if (profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID) return 'PsySquid Web 演示配置'
 		return (
 			profileStore.profiles.find(({ id }) => id === profileStore.activeProfileId)?.name ??
 			'未知配置'
@@ -333,7 +333,7 @@ export function ProfileConfigPanel({
 
 					<div className="space-y-1.5">
 						<ProfileListRow
-							name="Page Agent Demo"
+							name="PsySquid Web Demo"
 							detail={DEMO_MODEL}
 							active={profileStore.activeProfileId === BUILTIN_DEMO_PROFILE_ID}
 							onOpen={undefined}
@@ -427,7 +427,7 @@ export function ProfileConfigPanel({
 					</div>
 
 					<a href="/hub.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
-						管理 Page Agent Hub
+						管理 PsySquid Web Hub
 						<ExternalLink className="size-3" />
 					</a>
 				</section>
