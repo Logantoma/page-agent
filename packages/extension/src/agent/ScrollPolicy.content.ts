@@ -118,11 +118,12 @@ function findEligibleAncestor(start: Element | null, viewportHeight: number): HT
 
 function findLargestEligibleContainer(doc: Document, viewportHeight: number): HTMLElement | null {
 	let best: HTMLElement | null = null
-	let bestScore = -1
+	let bestScore = 0
 
 	for (const element of doc.querySelectorAll<HTMLElement>('*')) {
 		if (!isEligibleContainer(element, viewportHeight)) continue
 		const score = visibleArea(element)
+		if (score <= 0) continue
 		if (score > bestScore) {
 			best = element
 			bestScore = score
@@ -152,12 +153,11 @@ function isEligibleContainer(element: HTMLElement, viewportHeight: number): bool
 function visibleArea(element: HTMLElement): number {
 	const rect = element.getBoundingClientRect()
 	const win = element.ownerDocument.defaultView
-	if (!win) return element.clientWidth * element.clientHeight
+	if (!win) return 0
 
 	const width = Math.max(0, Math.min(rect.right, win.innerWidth) - Math.max(rect.left, 0))
 	const height = Math.max(0, Math.min(rect.bottom, win.innerHeight) - Math.max(rect.top, 0))
-	const area = width * height
-	return area > 0 ? area : element.clientWidth * element.clientHeight
+	return width * height
 }
 
 function describeContainer(element: HTMLElement): string {
