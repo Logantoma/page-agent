@@ -38,6 +38,7 @@ export class InPageAgentShell {
 		this.#recycleAgent()
 	}
 	#onAgentStatusChange = () => {
+		this.#launcher.setWorking(this.#agent?.status === 'running')
 		if (this.#pendingConfigRecycle && this.#agent?.status !== 'running') this.#recycleAgent()
 	}
 	#onAgentDispose = () => {
@@ -78,8 +79,13 @@ export class InPageAgentShell {
 		}
 
 		this.#opened = !this.#opened
-		if (this.#opened) this.#panel.show()
-		else this.#panel.hide()
+		if (this.#opened) {
+			this.#panel.show()
+			this.#launcher.setActive(true)
+		} else {
+			this.#panel.hide()
+			this.#launcher.setActive(false)
+		}
 	}
 
 	dispose(): void {
@@ -111,6 +117,7 @@ export class InPageAgentShell {
 			this.#agent = agent
 			this.#panel = panel
 			this.#opened = true
+			this.#launcher.setActive(true)
 			initialized = true
 		} finally {
 			if (!initialized) {
@@ -129,6 +136,8 @@ export class InPageAgentShell {
 		this.#panel = null
 		this.#agent = null
 		this.#opened = false
+		this.#launcher.setActive(false)
+		this.#launcher.setWorking(false)
 		agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
 		agent?.removeEventListener('dispose', this.#onAgentDispose)
 		panel?.dispose()

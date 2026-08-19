@@ -45,17 +45,29 @@ describe('InPageAgentShell', () => {
 
 		expect(createAgent).not.toHaveBeenCalled()
 		await shell.toggle()
+		const launcher = document.querySelector<HTMLElement>('#page-agent-inpage-launcher')
 		expect(createAgent).toHaveBeenCalledTimes(1)
 		expect(createPanel).toHaveBeenCalledTimes(1)
 		expect(panel.show).toHaveBeenCalledTimes(1)
+		expect(launcher?.dataset.active).toBe('true')
 
 		await shell.toggle()
 		expect(panel.hide).toHaveBeenCalledTimes(1)
+		expect(launcher?.dataset.active).toBe('false')
 		expect(createAgent).toHaveBeenCalledTimes(1)
 
 		await shell.toggle()
 		expect(panel.show).toHaveBeenCalledTimes(2)
 		expect(createAgent).toHaveBeenCalledTimes(1)
+		expect(launcher?.dataset.active).toBe('true')
+		agent.setStatus('running')
+		expect(launcher?.dataset.working).toBe('true')
+		for (const status of ['completed', 'error', 'stopped']) {
+			agent.setStatus('running')
+			expect(launcher?.dataset.working).toBe('true')
+			agent.setStatus(status)
+			expect(launcher?.dataset.working).toBe('false')
+		}
 	})
 
 	it('disposes the Panel, Agent, and launcher only once', async () => {
