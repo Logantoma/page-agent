@@ -43,6 +43,8 @@ export class InPageAgentShell {
 	}
 	#onAgentDispose = () => {
 		this.#pendingConfigRecycle = false
+		this.#launcher.setActive(false)
+		this.#launcher.setWorking(false)
 		this.#agent?.removeEventListener('statuschange', this.#onAgentStatusChange)
 		this.#panel = null
 		this.#agent = null

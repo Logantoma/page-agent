@@ -16,6 +16,8 @@ export interface InPageUiControllerDependencies {
 export class InPageUiController {
 	#shell: InPageAgentShell | null = null
 	#disposed = false
+	#started = false
+	#syncGeneration = 0
 	#getUrl: () => string
 	#loadPolicy: typeof loadSiteUiPolicy
 	#createShell: () => InPageAgentShell
@@ -34,16 +36,20 @@ export class InPageUiController {
 	}
 
 	async start(): Promise<void> {
-		if (this.#disposed) return
+		if (this.#disposed || this.#started) return
+		this.#started = true
 		chrome.storage.onChanged.addListener(this.#onStorageChanged)
 		await this.sync()
 	}
 
 	async sync(): Promise<void> {
 		if (this.#disposed) return
+		const generation = ++this.#syncGeneration
 		const origin = resolveSiteUiOrigin(this.#getUrl())
-		const enabled = origin !== null && isSiteUiEnabled(origin, await this.#loadPolicy())
+		const policy = await this.#loadPolicy()
+		if (this.#disposed || generation !== this.#syncGeneration) return
 
+		const enabled = origin !== null && isSiteUiEnabled(origin, policy)
 		if (enabled && !this.#shell) this.#shell = this.#createShell()
 		if (!enabled && this.#shell) {
 			this.#shell.dispose()
@@ -54,7 +60,9 @@ export class InPageUiController {
 	dispose(): void {
 		if (this.#disposed) return
 		this.#disposed = true
-		chrome.storage.onChanged.removeListener(this.#onStorageChanged)
+		this.#syncGeneration++
+		if (this.#started) chrome.storage.onChanged.removeListener(this.#onStorageChanged)
+		this.#started = false
 		this.#shell?.dispose()
 		this.#shell = null
 	}
