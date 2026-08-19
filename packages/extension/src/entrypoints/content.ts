@@ -1,6 +1,6 @@
 import { initPageController } from '@/agent/RemotePageController.content'
 import { initVisualObservationContent } from '@/agent/VisualObservation.content'
-import { InPageAgentShell } from '@/inpage/InPageAgentShell'
+import { InPageUiController } from '@/inpage/InPageUiController'
 
 // import { DEMO_CONFIG } from '@/agent/constants'
 
@@ -23,10 +23,11 @@ export default defineContentScript({
 		if (window.top !== window) return
 
 		const disposeVisualObservation = initVisualObservationContent()
-		const inPageShell = new InPageAgentShell()
+		const inPageUiController = new InPageUiController()
+		void inPageUiController.start()
 		ctx.onInvalidated(() => {
 			disposeVisualObservation()
-			inPageShell.dispose()
+			inPageUiController.dispose()
 		})
 
 		// if auth token matches, expose agent to page

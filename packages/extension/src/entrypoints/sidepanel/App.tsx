@@ -6,6 +6,7 @@ import { Logo } from '@/components/misc'
 import { Button } from '@/components/ui/button'
 
 import { useAgent } from '../../agent/useAgent'
+import { SiteUiToggle } from './SiteUiToggle'
 
 export default function App() {
 	const [visualTogglePending, setVisualTogglePending] = useState(false)
@@ -59,14 +60,17 @@ export default function App() {
 				</Button>
 			</header>
 
-			<div className="min-h-0 flex-1 overflow-hidden [&>div]:h-full [&>div>header]:hidden">
-				<ProfileConfigPanel
-					config={config}
-					status={status}
-					onSave={configure}
-					onSwitchProfile={switchProfile}
-					onClose={() => {}}
-				/>
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				<SiteUiToggle />
+				<div className="min-h-0 flex-1 overflow-hidden [&>div]:h-full [&>div>header]:hidden">
+					<ProfileConfigPanel
+						config={config}
+						status={status}
+						onSave={configure}
+						onSwitchProfile={switchProfile}
+						onClose={() => {}}
+					/>
+				</div>
 			</div>
 		</div>
 	)
