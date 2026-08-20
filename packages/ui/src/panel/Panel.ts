@@ -15,6 +15,11 @@ export interface PanelConfig {
 	 * @default true
 	 */
 	promptForNextTask?: boolean
+	/**
+	 * Whether to automatically focus the task input when it becomes visible
+	 * @default true
+	 */
+	autoFocusInput?: boolean
 }
 
 /**
@@ -356,10 +361,11 @@ export class Panel {
 		this.#taskInput.value = ''
 		this.#taskInput.placeholder = placeholder || this.#i18n.t('ui.panel.taskInput')
 		this.#inputSection.classList.remove(styles.hidden)
-		// Focus on input field
-		setTimeout(() => {
-			this.#taskInput.focus()
-		}, 100)
+		if (this.#config.autoFocusInput ?? true) {
+			setTimeout(() => {
+				this.#taskInput.focus()
+			}, 100)
+		}
 	}
 
 	/**

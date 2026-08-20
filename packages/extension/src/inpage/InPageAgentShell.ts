@@ -56,7 +56,11 @@ export class InPageAgentShell {
 		this.#createAgent = dependencies.createAgent ?? createAgent
 		this.#createPanel =
 			dependencies.createPanel ??
-			((agent, config) => new Panel(agent, { language: config.language }))
+			((agent, config) =>
+				new Panel(agent, {
+					language: config.language,
+					autoFocusInput: false,
+				}))
 		const createLauncher = dependencies.createLauncher ?? ((options) => new InPageLauncher(options))
 		this.#launcher = createLauncher({
 			onClick: () => void this.toggle().catch((error) => console.error(error)),
