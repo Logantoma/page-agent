@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>PsySquid Panel Focus Preservation Test</title>
+		<style>
+			:root {
+				font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				color: #172033;
+				background: #f5f7fb;
+			}
+			* { box-sizing: border-box; }
+			body { margin: 0; min-height: 100vh; padding: 40px 24px 120px; }
+			main { max-width: 920px; margin: 0 auto; }
+			h1 { margin: 0 0 8px; font-size: 28px; }
+			.lead { margin: 0 0 28px; color: #536079; line-height: 1.65; }
+			.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+			.card { background: #fff; border: 1px solid #dfe5ef; border-radius: 14px; padding: 20px; box-shadow: 0 8px 28px rgba(31, 46, 76, .06); }
+			.card.full { grid-column: 1 / -1; }
+			label { display: block; margin-bottom: 8px; font-weight: 650; }
+			input, textarea { width: 100%; border: 2px solid #cfd7e6; border-radius: 10px; padding: 12px 14px; font: inherit; background: #fff; outline: none; }
+			input:focus, textarea:focus { border-color: #3369ff; box-shadow: 0 0 0 4px rgba(51, 105, 255, .12); }
+			textarea { min-height: 110px; resize: vertical; }
+			.status { display: grid; gap: 10px; margin-top: 18px; }
+			.row { display: flex; justify-content: space-between; gap: 18px; padding: 10px 12px; border-radius: 8px; background: #f6f8fc; }
+			.value { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-align: right; overflow-wrap: anywhere; }
+			.result { margin-top: 16px; border-radius: 10px; padding: 14px; font-weight: 700; }
+			.result.ok { background: #eaf8ee; color: #166534; }
+			.result.bad { background: #fff0f0; color: #b42318; }
+			.result.neutral { background: #eef3ff; color: #244aa5; }
+			button { border: 1px solid #cfd7e6; border-radius: 9px; padding: 9px 13px; background: #fff; cursor: pointer; font: inherit; }
+			button:hover { background: #f5f7fb; }
+			.toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+			pre { margin: 0; max-height: 280px; overflow: auto; white-space: pre-wrap; font-size: 12px; line-height: 1.55; background: #101827; color: #dbe5f6; border-radius: 10px; padding: 14px; }
+			ol { margin: 0; padding-left: 22px; line-height: 1.75; }
+			code { background: #eef2f8; padding: 2px 5px; border-radius: 5px; }
+			@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .card.full { grid-column: auto; } }
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>PsySquid Panel Focus Preservation Test</h1>
+			<p class="lead">用于验证 PsySquid Web 的 in-page Panel 不会在初始化或 Agent 完成时自动抢走网页输入焦点。页面不会主动改变焦点，除非你点击“重置结果”按钮。</p>
+
+			<div class="grid">
+				<section class="card">
+					<label for="page-input">网页原生 Input</label>
+					<input id="page-input" autocomplete="off" placeholder="点击这里并持续输入，例如 abc123" />
+				</section>
+
+				<section class="card">
+					<label for="page-textarea">网页原生 Textarea</label>
+					<textarea id="page-textarea" placeholder="也可以用这里测试长文本输入"></textarea>
+				</section>
+
+				<section class="card full">
+					<h2>实时判定</h2>
+					<div class="status">
+						<div class="row"><span>当前焦点</span><span class="value" id="active-element">BODY / none</span></div>
+						<div class="row"><span>网页输入框连续持有焦点</span><span class="value" id="focus-duration">0 ms</span></div>
+						<div class="row"><span>检测到非主动的 Panel 抢焦点次数</span><span class="value" id="theft-count">0</span></div>
+					</div>
+					<div id="result" class="result neutral">尚未检测到异常。请先点击网页 Input 或 Textarea 开始测试。</div>
+				</section>
+
+				<section class="card full">
+					<h2>建议手测流程</h2>
+					<ol>
+						<li>确认 PsySquid Launcher 已出现，打开 Panel。</li>
+						<li>点击上面的“网页原生 Input”，输入 <code>FOCUS-A</code>，等待 1 秒；焦点应保持在网页 Input。</li>
+						<li>在 PsySquid Panel 中执行：<code>等待 5 秒，然后告诉我当前页面标题，不要点击或输入网页元素。</code></li>
+						<li>Agent 进入 running 后，立即再次点击网页 Input，并持续输入 <code>FOCUS-B-123456</code>。</li>
+						<li>等 Agent completed 后再继续敲几个字符。字符必须仍进入网页 Input，且“抢焦点次数”保持 0。</li>
+						<li>最后主动点击 PsySquid Panel 输入框并输入文字；主动点击必须仍能正常获得焦点。</li>
+					</ol>
+				</section>
+
+				<section class="card full">
+					<div class="toolbar"><button id="reset" type="button">重置结果 / 清空日志</button></div>
+					<pre id="log">等待焦点事件…</pre>
+				</section>
+			</div>
+		</main>
+
+		<script>
+			(() => {
+				const activeElementView = document.querySelector('#active-element')
+				const focusDurationView = document.querySelector('#focus-duration')
+				const theftCountView = document.querySelector('#theft-count')
+				const resultView = document.querySelector('#result')
+				const logView = document.querySelector('#log')
+				const resetButton = document.querySelector('#reset')
+				const pageFields = new Set([document.querySelector('#page-input'), document.querySelector('#page-textarea')])
+
+				let theftCount = 0
+				let pageFocusStartedAt = null
+				let lastPointerDownInsidePanel = 0
+				let logs = []
+
+				function labelElement(el) {
+					if (!el || el === document.body) return 'BODY / none'
+					if (el.id === 'page-input') return 'PAGE INPUT #page-input'
+					if (el.id === 'page-textarea') return 'PAGE TEXTAREA #page-textarea'
+					if (el.closest?.('#page-agent-runtime_agent-panel')) return 'PSYSQUID PANEL ' + el.tagName.toLowerCase()
+					return `${el.tagName?.toLowerCase() || 'unknown'}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : ''}`
+				}
+
+				function log(message) {
+					const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+					logs.push(`[${time}] ${message}`)
+					logs = logs.slice(-80)
+					logView.textContent = logs.join('\n')
+					logView.scrollTop = logView.scrollHeight
+				}
+
+				function setResult(kind, text) {
+					resultView.className = `result ${kind}`
+					resultView.textContent = text
+				}
+
+				document.addEventListener('pointerdown', (event) => {
+					if (event.target instanceof Element && event.target.closest('#page-agent-runtime_agent-panel')) {
+						lastPointerDownInsidePanel = performance.now()
+					}
+				}, true)
+
+				document.addEventListener('focusin', (event) => {
+					const target = event.target
+					activeElementView.textContent = labelElement(target)
+					log(`focusin -> ${labelElement(target)}`)
+
+					if (pageFields.has(target)) {
+						pageFocusStartedAt = performance.now()
+						if (theftCount === 0) setResult('ok', '网页输入框已获得焦点。保持输入并观察 Agent 状态变化。')
+						return
+					}
+
+					if (target instanceof Element && target.closest('#page-agent-runtime_agent-panel')) {
+						const explicitPointer = performance.now() - lastPointerDownInsidePanel < 700
+						if (pageFocusStartedAt !== null && !explicitPointer) {
+							theftCount += 1
+							theftCountView.textContent = String(theftCount)
+							setResult('bad', 'FAIL：检测到网页输入焦点在没有主动点击 Panel 的情况下被 PsySquid Panel 抢走。')
+							log('*** UNEXPECTED PANEL FOCUS DETECTED ***')
+						} else if (explicitPointer) {
+							log('Panel focus follows an explicit pointer action; not counted as focus theft.')
+						}
+					}
+					pageFocusStartedAt = null
+				}, true)
+
+				document.addEventListener('focusout', (event) => {
+					log(`focusout <- ${labelElement(event.target)}`)
+				}, true)
+
+				setInterval(() => {
+					activeElementView.textContent = labelElement(document.activeElement)
+					if (pageFields.has(document.activeElement) && pageFocusStartedAt !== null) {
+						focusDurationView.textContent = `${Math.round(performance.now() - pageFocusStartedAt)} ms`
+					} else {
+						focusDurationView.textContent = '0 ms'
+					}
+				}, 100)
+
+				resetButton.addEventListener('click', () => {
+					theftCount = 0
+					pageFocusStartedAt = null
+					theftCountView.textContent = '0'
+					logs = []
+					logView.textContent = '日志已清空。点击网页 Input 或 Textarea 重新开始。'
+					setResult('neutral', '结果已重置。请点击网页 Input 或 Textarea 开始测试。')
+				})
+			})()
+		</script>
+	</body>
+</html>
