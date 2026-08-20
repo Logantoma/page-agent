@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PsySquid Web UI Footprint Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#182033;font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:900px;margin:32px auto;padding:0 20px}h1{margin:0 0 8px;font-size:28px}.lead{margin:0 0 20px;color:#5e697b}.card{background:#fff;border:1px solid #dfe5ee;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 4px 18px rgba(20,30,50,.05)}.row{display:grid;grid-template-columns:240px 1fr;gap:8px 12px;margin:7px 0}.k{font-weight:700;color:#526074}.v{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.ok{color:#16784a;font-weight:800}.warn{color:#a45b00;font-weight:800}.bad{color:#b42318;font-weight:800}button,input{font:inherit}button{border:1px solid #b8c2d0;background:#fff;border-radius:9px;padding:9px 13px;cursor:pointer;margin:4px 6px 4px 0}button:hover{background:#f3f6fb}input{width:100%;border:1px solid #b9c4d2;border-radius:9px;padding:10px 12px}.native{position:fixed;right:78px;bottom:150px;width:44px;height:44px;border:0;border-radius:50%;background:#2f6bff;color:white;font-weight:900;box-shadow:0 8px 22px rgba(47,107,255,.25);z-index:3000}.log{height:220px;overflow:auto;background:#101827;color:#d8e3f4;border-radius:10px;padding:12px;white-space:pre-wrap;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.report{width:100%;min-height:180px;border:1px solid #c7cfdb;border-radius:10px;padding:10px;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.steps{margin:0;padding-left:22px}.steps li{margin:7px 0}@media(max-width:700px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>PsySquid Web UI Footprint Test</h1>
+<p class="lead">单文件、零依赖测试页。只观察真实 Chrome 中 PsySquid Launcher / Panel 对 document 的可见性、点击事件和焦点变化。</p>
+
+<div class="card">
+<h2>你只做 3 件事</h2>
+<ol class="steps">
+<li>确认右下角 PsySquid Launcher 出现，然后点击一次。</li>
+<li>Panel 打开后，主动点击一次 Panel 输入框。</li>
+<li>回到本页，点“生成并复制报告”，把整段内容发给开发 AI。</li>
+</ol>
+<p>右侧蓝色 <b>?</b> 是网页自身的普通浮窗基准；可先点一次，不影响测试。</p>
+</div>
+
+<div class="card">
+<h2>网页原生基准</h2>
+<input id="pageInput" placeholder="可选：先点这里，再点蓝色 ? 或 PsySquid Launcher">
+</div>
+
+<div class="card">
+<h2>实时观察</h2>
+<div class="row"><div class="k">document.hasFocus()</div><div id="hasFocus" class="v">-</div></div>
+<div class="row"><div class="k">document.activeElement</div><div id="active" class="v">-</div></div>
+<div class="row"><div class="k">Launcher host</div><div id="launcher" class="v">-</div></div>
+<div class="row"><div class="k">Launcher shadowRoot</div><div id="shadow" class="v">-</div></div>
+<div class="row"><div class="k">Panel host</div><div id="panel" class="v">-</div></div>
+<div class="row"><div class="k">网页捕获 PsySquid click</div><div id="psyClick" class="v">0</div></div>
+<div class="row"><div class="k">网页捕获 PsySquid focusin</div><div id="psyFocus" class="v">0</div></div>
+<div class="row"><div class="k">PsySquid DOM mutation</div><div id="psyMutation" class="v">0</div></div>
+<div class="row"><div class="k">window blur</div><div id="windowBlur" class="v">0</div></div>
+<div style="margin-top:12px"><button id="snapshot">记录快照</button><button id="clear">清空事件</button></div>
+</div>
+
+<div class="card">
+<h2>事件记录</h2>
+<div id="log" class="log"></div>
+</div>
+
+<div class="card">
+<h2>最终报告</h2>
+<button id="makeReport">生成并复制报告</button>
+<textarea id="report" class="report" readonly placeholder="点击上面的按钮生成"></textarea>
+</div>
+</main>
+
+<button id="nativeHelp" class="native" title="网页自身普通浮窗">?</button>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id)
+  const state = {
+    psyClick: 0,
+    psyFocus: 0,
+    psyMutation: 0,
+    windowBlur: 0,
+    lastPsyClickTarget: null,
+    lastPsyClickPath: null,
+    lastPsyFocusTarget: null,
+    mutations: [],
+    events: []
+  }
+  const describe = (node) => {
+    if (!node) return 'null'
+    if (node === window) return 'window'
+    if (node === document) return 'document'
+    if (node instanceof ShadowRoot) return '#shadow-root(' + node.mode + ')'
+    if (!(node instanceof Element)) return node.nodeName || String(node)
+    let s = node.tagName.toLowerCase()
+    if (node.id) s += '#' + node.id
+    if (node.classList && node.classList.length) s += '.' + [...node.classList].slice(0,2).join('.')
+    return s
+  }
+  const isPsyNode = (node) => node instanceof Element && (
+    node.id === 'page-agent-inpage-launcher' ||
+    node.id === 'page-agent-runtime_agent-panel' ||
+    !!node.closest?.('#page-agent-inpage-launcher,#page-agent-runtime_agent-panel')
+  )
+  const isPsyPath = (path) => path.some(isPsyNode)
+  const add = (text) => {
+    const line = new Date().toLocaleTimeString() + '  ' + text
+    state.events.push(line)
+    if (state.events.length > 120) state.events.shift()
+    $('log').textContent = state.events.join('\n')
+    $('log').scrollTop = $('log').scrollHeight
+  }
+  const snapshot = () => {
+    const launcher = document.getElementById('page-agent-inpage-launcher')
+    const panel = document.getElementById('page-agent-runtime_agent-panel')
+    return {
+      hasFocus: document.hasFocus(),
+      activeElement: describe(document.activeElement),
+      launcherPresent: !!launcher,
+      launcherShadowMode: launcher?.shadowRoot?.mode || null,
+      launcherShadowActive: describe(launcher?.shadowRoot?.activeElement || null),
+      panelPresent: !!panel,
+      psyClick: state.psyClick,
+      psyFocus: state.psyFocus,
+      psyMutation: state.psyMutation,
+      windowBlur: state.windowBlur,
+      lastPsyClickTarget: state.lastPsyClickTarget,
+      lastPsyClickPath: state.lastPsyClickPath,
+      lastPsyFocusTarget: state.lastPsyFocusTarget
+    }
+  }
+  const render = () => {
+    const s = snapshot()
+    $('hasFocus').textContent = String(s.hasFocus)
+    $('hasFocus').className = 'v ' + (s.hasFocus ? 'ok' : 'warn')
+    $('active').textContent = s.activeElement
+    $('launcher').textContent = s.launcherPresent ? 'PRESENT' : 'ABSENT'
+    $('launcher').className = 'v ' + (s.launcherPresent ? 'ok' : 'warn')
+    $('shadow').textContent = s.launcherShadowMode || 'none'
+    $('shadow').className = 'v ' + (s.launcherShadowMode === 'open' ? 'warn' : '')
+    $('panel').textContent = s.panelPresent ? 'PRESENT' : 'ABSENT'
+    $('panel').className = 'v ' + (s.panelPresent ? 'ok' : '')
+    $('psyClick').textContent = String(s.psyClick)
+    $('psyFocus').textContent = String(s.psyFocus)
+    $('psyMutation').textContent = String(s.psyMutation)
+    $('windowBlur').textContent = String(s.windowBlur)
+  }
+
+  document.addEventListener('click', (event) => {
+    const path = event.composedPath()
+    if (isPsyPath(path)) {
+      state.psyClick++
+      state.lastPsyClickTarget = describe(event.target)
+      state.lastPsyClickPath = path.slice(0,10).map(describe).join(' > ')
+      add('PSY_CLICK target=' + state.lastPsyClickTarget + ' path=' + state.lastPsyClickPath)
+      render()
+    }
+  }, true)
+
+  document.addEventListener('focusin', (event) => {
+    const path = event.composedPath()
+    if (isPsyPath(path)) {
+      state.psyFocus++
+      state.lastPsyFocusTarget = describe(event.target)
+      add('PSY_FOCUSIN target=' + state.lastPsyFocusTarget)
+      render()
+    }
+  }, true)
+
+  window.addEventListener('blur', () => {
+    state.windowBlur++
+    add('WINDOW_BLUR')
+    render()
+  })
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const [kind, nodes] of [['added', mutation.addedNodes], ['removed', mutation.removedNodes]]) {
+        for (const node of nodes) {
+          if (!(node instanceof Element)) continue
+          const hit = isPsyNode(node) ? node : node.querySelector?.('#page-agent-inpage-launcher,#page-agent-runtime_agent-panel')
+          if (!hit) continue
+          state.psyMutation++
+          const text = kind + ' ' + describe(hit)
+          state.mutations.push(text)
+          add('PSY_MUTATION ' + text)
+        }
+      }
+    }
+    render()
+  })
+  observer.observe(document.documentElement, { childList: true, subtree: true })
+
+  $('nativeHelp').addEventListener('click', () => add('NATIVE_HELP_CLICK'))
+  $('snapshot').addEventListener('click', () => add('SNAPSHOT ' + JSON.stringify(snapshot())))
+  $('clear').addEventListener('click', () => {
+    state.events.length = 0
+    $('log').textContent = ''
+  })
+  $('makeReport').addEventListener('click', async () => {
+    const report = [
+      '=== PsySquid Web UI Footprint Test ===',
+      'time: ' + new Date().toISOString(),
+      '',
+      'snapshot:',
+      JSON.stringify(snapshot(), null, 2),
+      '',
+      'mutations:',
+      JSON.stringify(state.mutations, null, 2),
+      '',
+      'recent events:',
+      state.events.join('\n')
+    ].join('\n')
+    $('report').value = report
+    try {
+      await navigator.clipboard.writeText(report)
+      add('REPORT_COPIED')
+    } catch {
+      $('report').focus(); $('report').select(); document.execCommand('copy')
+      add('REPORT_COPY_FALLBACK')
+    }
+  })
+
+  render()
+  add('READY')
+  setTimeout(render, 500)
+  setTimeout(render, 1500)
+})()
+</script>
+</body>
+</html>
