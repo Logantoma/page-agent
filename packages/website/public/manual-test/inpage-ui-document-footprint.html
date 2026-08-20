@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>PsySquid In-page UI Document Footprint Probe</title>
+	<style>
+		:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #f5f7fb; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px; min-height: 100vh; }
+		main { max-width: 1100px; margin: 0 auto; }
+		h1 { margin: 0 0 8px; font-size: 28px; }
+		.lead { margin: 0 0 22px; color: #596579; line-height: 1.6; }
+		.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+		.card { background: white; border: 1px solid #dfe5ef; border-radius: 14px; padding: 18px; box-shadow: 0 5px 18px rgba(19, 33, 58, .05); }
+		.card h2 { margin: 0 0 12px; font-size: 17px; }
+		.full { grid-column: 1 / -1; }
+		label { display: block; margin: 12px 0 5px; font-weight: 650; }
+		input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #b9c4d4; border-radius: 8px; font: inherit; }
+		textarea { min-height: 84px; resize: vertical; }
+		button { padding: 9px 13px; border: 1px solid #aeb9ca; border-radius: 8px; background: #fff; cursor: pointer; font: inherit; }
+		button:hover { background: #f4f7fb; }
+		.status { display: grid; grid-template-columns: 220px 1fr; gap: 8px 12px; margin: 0; }
+		.status dt { font-weight: 700; color: #4c596d; }
+		.status dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+		.ok { color: #157347; font-weight: 700; }
+		.warn { color: #a15c00; font-weight: 700; }
+		.log { height: 330px; overflow: auto; background: #0d1420; color: #d7e3f6; border-radius: 10px; padding: 12px; white-space: pre-wrap; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+		.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+		.native-help { position: fixed; right: 48px; bottom: 192px; width: 44px; height: 44px; border-radius: 22px; background: #3369ff; color: white; display: grid; place-items: center; z-index: 3800; user-select: none; cursor: pointer; box-shadow: 2px 8px 15px rgba(51,105,255,.2); font-weight: 800; }
+		.native-help-popup { position: fixed; right: 48px; bottom: 244px; width: 280px; min-height: 130px; padding: 16px; background: white; border: 1px solid #dbe2ec; border-radius: 12px; box-shadow: 2px 8px 15px rgba(0,0,0,.1); z-index: 3800; display: none; }
+		.native-help-popup.open { display: block; }
+		.native-help-popup strong { display: block; margin-bottom: 8px; }
+		.small { color: #6a7588; font-size: 13px; line-height: 1.55; }
+		@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .full { grid-column: auto; } .status { grid-template-columns: 1fr; } }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>PsySquid In-page UI Document Footprint Probe</h1>
+		<p class="lead">这个页面站在“普通网站脚本”的视角，观察点击 PsySquid Launcher / Panel 时，document 焦点、事件传播、Shadow DOM retargeting 和 DOM mutation。它只用于兼容性审计。</p>
+
+		<section class="grid">
+			<div class="card">
+				<h2>网页原生焦点目标</h2>
+				<label for="page-input">Page Input</label>
+				<input id="page-input" autocomplete="off" placeholder="先点击这里，再点击原生 FAQ-like 或 PsySquid Launcher" />
+				<label for="page-textarea">Page Textarea</label>
+				<textarea id="page-textarea" placeholder="用于观察 focusout / activeElement 变化"></textarea>
+				<p class="small">注意：用户主动点击另一个可聚焦控件导致 Page Input blur 是正常浏览器行为；本页重点区分“主动点击造成的焦点变化”和“UI 出现/任务结束后额外发生的自动 focus”。</p>
+			</div>
+
+			<div class="card">
+				<h2>实时 document 视角</h2>
+				<dl class="status">
+					<dt>document.hasFocus()</dt><dd id="has-focus">-</dd>
+					<dt>document.activeElement</dt><dd id="active-element">-</dd>
+					<dt>Launcher host</dt><dd id="launcher-host">-</dd>
+					<dt>Launcher shadow active</dt><dd id="launcher-shadow-active">-</dd>
+					<dt>Panel present</dt><dd id="panel-present">-</dd>
+					<dt>Last captured event</dt><dd id="last-event">-</dd>
+					<dt>PsySquid mutation count</dt><dd id="mutation-count">0</dd>
+					<dt>Window blur count</dt><dd id="window-blur-count">0</dd>
+				</dl>
+			</div>
+
+			<div class="card full">
+				<h2>页面侧事件 / DOM 观察日志</h2>
+				<div class="controls">
+					<button id="clear-log" type="button">清空日志</button>
+					<button id="snapshot" type="button">记录当前快照</button>
+					<button id="export-report" type="button">生成报告文本</button>
+				</div>
+				<div id="log" class="log" aria-live="polite"></div>
+				<label for="report">报告文本</label>
+				<textarea id="report" readonly></textarea>
+			</div>
+		</section>
+	</main>
+
+	<div id="native-help" class="native-help">?</div>
+	<div id="native-help-popup" class="native-help-popup">
+		<strong>Native FAQ-like baseline</strong>
+		<div class="small">这是页面自身创建的普通非 Shadow DOM 浮窗，用来对比 document capture listener 能看到什么。它不是 PsySquid。</div>
+	</div>
+
+	<script>
+		(() => {
+			const logEl = document.getElementById('log')
+			const reportEl = document.getElementById('report')
+			const lastEventEl = document.getElementById('last-event')
+			const mutationCountEl = document.getElementById('mutation-count')
+			const windowBlurCountEl = document.getElementById('window-blur-count')
+			let mutationCount = 0
+			let windowBlurCount = 0
+			const records = []
+
+			const now = () => new Date().toISOString().slice(11, 23)
+			const truncate = (value, max = 180) => value.length > max ? value.slice(0, max) + '…' : value
+
+			function describeNode(node) {
+				if (!node) return 'null'
+				if (node === window) return 'window'
+				if (node === document) return 'document'
+				if (node instanceof ShadowRoot) return '#shadow-root(' + node.mode + ')'
+				if (!(node instanceof Element)) return node.nodeName || String(node)
+				let value = node.tagName.toLowerCase()
+				if (node.id) value += '#' + node.id
+				if (node.classList && node.classList.length) value += '.' + [...node.classList].slice(0, 3).join('.')
+				return value
+			}
+
+			function isPsySquidPath(path) {
+				return path.some((node) => node instanceof Element && (
+					node.id === 'page-agent-inpage-launcher' ||
+					node.id === 'page-agent-runtime_agent-panel' ||
+					node.closest?.('#page-agent-runtime_agent-panel') ||
+					node.closest?.('#page-agent-inpage-launcher')
+				))
+			}
+
+			function addRecord(kind, detail, emphasized = false) {
+				const line = `[${now()}] ${kind} ${detail}`
+				records.push(line)
+				if (records.length > 400) records.shift()
+				const row = document.createElement('div')
+				row.textContent = line
+				if (emphasized) row.style.color = '#7dd3fc'
+				logEl.appendChild(row)
+				logEl.scrollTop = logEl.scrollHeight
+			}
+
+			function activeSnapshot() {
+				const launcher = document.getElementById('page-agent-inpage-launcher')
+				const shadowActive = launcher?.shadowRoot?.activeElement ?? null
+				return {
+					hasFocus: document.hasFocus(),
+					activeElement: describeNode(document.activeElement),
+					launcherPresent: Boolean(launcher),
+					launcherShadowMode: launcher?.shadowRoot?.mode ?? null,
+					launcherShadowActive: describeNode(shadowActive),
+					panelPresent: Boolean(document.getElementById('page-agent-runtime_agent-panel')),
+					mutationCount,
+					windowBlurCount,
+				}
+			}
+
+			function renderStatus() {
+				const s = activeSnapshot()
+				document.getElementById('has-focus').textContent = String(s.hasFocus)
+				document.getElementById('has-focus').className = s.hasFocus ? 'ok' : 'warn'
+				document.getElementById('active-element').textContent = s.activeElement
+				document.getElementById('launcher-host').textContent = s.launcherPresent ? `present; shadow=${s.launcherShadowMode || 'none'}` : 'absent'
+				document.getElementById('launcher-shadow-active').textContent = s.launcherShadowActive
+				document.getElementById('panel-present').textContent = String(s.panelPresent)
+				mutationCountEl.textContent = String(mutationCount)
+				windowBlurCountEl.textContent = String(windowBlurCount)
+			}
+
+			for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click', 'focusin', 'focusout']) {
+				document.addEventListener(type, (event) => {
+					const path = event.composedPath()
+					const psy = isPsySquidPath(path)
+					const pathText = path.slice(0, 8).map(describeNode).join(' > ')
+					const detail = `target=${describeNode(event.target)} active=${describeNode(document.activeElement)} psy=${psy} path=${truncate(pathText)}`
+					lastEventEl.textContent = `${type}: ${describeNode(event.target)}; psy=${psy}`
+					addRecord(type.toUpperCase(), detail, psy)
+					queueMicrotask(renderStatus)
+				}, true)
+			}
+
+			window.addEventListener('focus', () => addRecord('WINDOW', 'focus'))
+			window.addEventListener('blur', () => {
+				windowBlurCount += 1
+				addRecord('WINDOW', 'blur', true)
+				renderStatus()
+			})
+			document.addEventListener('visibilitychange', () => addRecord('DOCUMENT', `visibility=${document.visibilityState}`))
+
+			const observer = new MutationObserver((mutations) => {
+				for (const mutation of mutations) {
+					if (mutation.type === 'childList') {
+						for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+							if (!(node instanceof Element)) continue
+							const root = node.matches?.('#page-agent-inpage-launcher, #page-agent-runtime_agent-panel')
+								? node
+								: node.querySelector?.('#page-agent-inpage-launcher, #page-agent-runtime_agent-panel')
+							if (!root) continue
+							mutationCount += 1
+							const action = [...mutation.addedNodes].includes(node) ? 'added' : 'removed'
+							addRecord('MUTATION', `${action} ${describeNode(root)} parent=${describeNode(mutation.target)}`, true)
+						}
+					}
+					if (mutation.type === 'attributes' && mutation.target instanceof Element) {
+						const target = mutation.target
+						if (target.id === 'page-agent-inpage-launcher' || target.id === 'page-agent-runtime_agent-panel') {
+							mutationCount += 1
+							addRecord('MUTATION', `attribute ${mutation.attributeName} on ${describeNode(target)}`, true)
+						}
+					}
+				}
+				renderStatus()
+			})
+			observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true })
+
+			document.getElementById('native-help').addEventListener('click', () => {
+				document.getElementById('native-help-popup').classList.toggle('open')
+			})
+			document.getElementById('clear-log').addEventListener('click', () => {
+				records.length = 0
+				logEl.replaceChildren()
+			})
+			document.getElementById('snapshot').addEventListener('click', () => {
+				addRecord('SNAPSHOT', JSON.stringify(activeSnapshot()), true)
+			})
+			document.getElementById('export-report').addEventListener('click', () => {
+				const report = {
+					timestamp: new Date().toISOString(),
+					snapshot: activeSnapshot(),
+					launcherOuterHTML: document.getElementById('page-agent-inpage-launcher')?.outerHTML ?? null,
+					panelOuterHTMLPrefix: document.getElementById('page-agent-runtime_agent-panel')?.outerHTML.slice(0, 1200) ?? null,
+					recentRecords: records.slice(-120),
+				}
+				reportEl.value = JSON.stringify(report, null, 2)
+			})
+
+			setInterval(renderStatus, 150)
+			renderStatus()
+			addRecord('READY', 'document-side probe started')
+		})()
+	</script>
+</body>
+</html>
