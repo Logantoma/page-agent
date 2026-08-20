@@ -42,7 +42,7 @@ b0df39b13d00e1f3b61e5e5f995a9212c3dd43b2
 
 **下一阶段功能开发必须从当前远端 `main` 新建 feature/fix 分支。**
 
-`7b37f2684cf34e9fa83e7190866576be4f0d7a83` 是 0.1.0 第一阶段结束时的**代码基线**。在此之后允许 `main` 出现纯文档收口提交，因此新 AI 不应要求 `main HEAD` 永远精确等于该 SHA；应先 fetch 当前 `main`，确认它包含该代码基线，且后续若有差异仅为已知文档/收口提交。
+`7b37f2684cf34e9fa83e7190866576be4f0d7a83` 是 0.1.0 第一阶段结束时的代码基线。在此之后 `main` 可以继续接受经过验证的 post-0.1.0 hardening 和文档收口，因此新 AI 不应要求 `main HEAD` 永远精确等于该 SHA；应先 fetch 当前 `main`，确认历史连续并审计新增提交。
 
 不要从 `release/psysquid-web-0.1.0-test` 继续堆功能。release 分支已经冻结用于 0.1.0 内部测试分发。
 
@@ -125,6 +125,7 @@ B4.6 已完成 tab-global index namespace、frame routing 和动作反馈回写�
 | V2.1 | `2f854dc4f9ea73bdb665ba7b0ae092c1c02dd02c` | Shadow Launcher |
 | Hardening | `7b37f2684cf34e9fa83e7190866576be4f0d7a83` | lifecycle hardening |
 | Release | `b0df39b13d00e1f3b61e5e5f995a9212c3dd43b2` | extension 0.1.0 |
+| Post-0.1.0 P1 | `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` | in-page Panel focus hardening |
 
 ---
 
@@ -151,6 +152,24 @@ launcher.setWorking(false)
 
 避免 Launcher 假 active 状态。
 
+### Post-0.1.0：Panel focus hardening
+
+`59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 已将 Panel 自动 focus 行为配置化：
+
+```ts
+interface PanelConfig {
+  autoFocusInput?: boolean // default true
+}
+```
+
+upstream Panel 默认仍为 `true`；PsySquid `InPageAgentShell` 显式传 `autoFocusInput: false`，因此网页内嵌模式不会在 input area 显示或任务完成时自动抢走网页焦点。
+
+验证状态：
+
+- REMOTE-CONFIRMED：实现和 diff 已复核，main 已 fast-forward 到该 commit。
+- LOCAL-AI-REPORTED：焦点专项 `2/2 PASS`、typecheck PASS、root tests `174/174 PASS`、extension `105/105 PASS`、build:ext PASS、diff check PASS。
+- USER-MANUAL-VERIFIED：真实浏览器 focus 行为仍待部署前最终确认。
+
 ---
 
 ## 7. 品牌化边界
@@ -173,7 +192,7 @@ launcher.setWorking(false)
 
 ## 8. 最终测试状态
 
-LOCAL-AI-REPORTED：
+0.1.0 收口时 LOCAL-AI-REPORTED：
 
 ```text
 npm ci: PASS
@@ -192,6 +211,8 @@ USER-MANUAL-VERIFIED：
 - fullscreen PASS
 - hardening rapid toggle / Panel close PASS
 - 0.1.0 release ZIP runtime PASS
+
+Post-0.1.0 focus hardening 的真实浏览器 focus gate 尚未标记为 USER-MANUAL-VERIFIED。
 
 ---
 
@@ -225,22 +246,15 @@ host_permissions: <all_urls>
 
 本版只做内部 Chrome 开发者模式测试，不公开商店。
 
+注意：冻结的 0.1.0 release branch 不自动包含后续 `main` 的 focus hardening；如果测试分发包需要包含该修复，应走新的测试构建/修复版本流程，而不是修改冻结历史。
+
 ---
 
 ## 10. 已知延期项
 
-### P1
-Panel `#showInputArea()` 100ms 后自动 focus，可能抢网页焦点。
+### P1（已修复，人工 runtime gate 待确认）
 
-推荐未来最小补丁：
-
-```ts
-interface PanelConfig {
-  autoFocusInput?: boolean // default true
-}
-```
-
-PsySquid in-page Shell 传 `false`，upstream 默认行为不变。
+Panel 自动 focus 已通过 `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 修复并进入 `main`。不要重复开发；部署前只需补真实浏览器 focus 验证。
 
 ### P2
 
@@ -264,8 +278,8 @@ PsySquid in-page Shell 传 `false`，upstream 默认行为不变。
 
 1. `git fetch origin --prune`
 2. `git switch main`
-3. `git log -n 3 --oneline` 并确认当前 `main` 包含 0.1.0 代码基线 `7b37f2684cf34e9fa83e7190866576be4f0d7a83`
-4. 如果 `main` 已领先该 SHA，先审计 `git diff 7b37f268..main --stat`，确认领先内容是已知的文档/收口提交，而不是未经交接的新功能
+3. `git pull --ff-only origin main`
+4. `git log -n 5 --oneline` 并确认历史包含 0.1.0 代码基线 `7b37f2684cf34e9fa83e7190866576be4f0d7a83` 以及已记录的 post-0.1.0 hardening
 5. 工作区必须 clean
 6. 从当前 `main` 新建 `feature/<name>` 或 `fix/<name>`
 7. 先读实际代码，再定方案；优先 extension downstream
@@ -312,13 +326,12 @@ PsySquid in-page Shell 传 `false`，upstream 默认行为不变。
 
 默认优先级：
 
-1. 收集 0.1.0 内部测试真实问题。
+1. 收集内部测试真实问题。
 2. 修真实 P0/P1。
-3. `autoFocusInput` 低侵入补丁。
-4. body replacement / listener cleanup hardening。
-5. 再根据业务扩展网页操作能力或工具。
-6. UI 大改继续延期。
-7. Chrome Web Store / privacy / 官网作为独立发布治理项目。
+3. body replacement / listener cleanup hardening。
+4. 再根据业务扩展网页操作能力或工具。
+5. UI 大改继续延期。
+6. Chrome Web Store / privacy / 官网作为独立发布治理项目。
 
 ---
 
@@ -326,4 +339,4 @@ PsySquid in-page Shell 传 `false`，upstream 默认行为不变。
 
 **PsySquid Web 0.1.0 第一阶段开发正式结束。**
 
-0.1.0 是冻结的内部测试基线。`7b37f268...` 是本阶段结束时的代码基线；新的研发从**当前远端 main**建独立分支推进，不在 release 分支继续开发。
+0.1.0 是冻结的内部测试基线。`7b37f268...` 是本阶段结束时的代码基线；后续 hardening 与新研发从**当前远端 main**继续推进，不在冻结 release 分支直接开发。
