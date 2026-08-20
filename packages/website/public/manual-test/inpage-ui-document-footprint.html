@@ -3,230 +3,419 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>PsySquid In-page UI Document Footprint Probe</title>
+	<title>PsySquid In-page UI Footprint Guided Test</title>
 	<style>
 		:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #f5f7fb; }
 		* { box-sizing: border-box; }
-		body { margin: 0; padding: 28px; min-height: 100vh; }
-		main { max-width: 1100px; margin: 0 auto; }
+		body { margin: 0; padding: 24px; min-height: 100vh; }
+		main { max-width: 1080px; margin: 0 auto; }
 		h1 { margin: 0 0 8px; font-size: 28px; }
-		.lead { margin: 0 0 22px; color: #596579; line-height: 1.6; }
-		.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-		.card { background: white; border: 1px solid #dfe5ef; border-radius: 14px; padding: 18px; box-shadow: 0 5px 18px rgba(19, 33, 58, .05); }
-		.card h2 { margin: 0 0 12px; font-size: 17px; }
-		.full { grid-column: 1 / -1; }
-		label { display: block; margin: 12px 0 5px; font-weight: 650; }
+		.lead { margin: 0 0 20px; color: #596579; line-height: 1.65; }
+		.notice { margin: 0 0 18px; padding: 12px 14px; background: #eef5ff; border: 1px solid #cfe0ff; border-radius: 10px; line-height: 1.6; }
+		.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+		.card { background: #fff; border: 1px solid #dfe5ef; border-radius: 14px; padding: 18px; box-shadow: 0 5px 18px rgba(19, 33, 58, .05); }
+		.card.full { grid-column: 1 / -1; }
+		.card h2 { margin: 0 0 8px; font-size: 18px; }
+		.card p { margin: 7px 0; line-height: 1.6; }
+		.step { border-left: 5px solid #97a5ba; }
+		.step.pass { border-left-color: #1f9d62; background: #f3fff8; }
+		.step.fail { border-left-color: #d33b3b; background: #fff5f5; }
+		.badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; background: #eef1f5; color: #5d6878; }
+		.pass .badge { background: #dff7e9; color: #14683f; }
+		.fail .badge { background: #ffe1e1; color: #9b2525; }
+		label { display: block; margin: 12px 0 5px; font-weight: 700; }
 		input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #b9c4d4; border-radius: 8px; font: inherit; }
-		textarea { min-height: 84px; resize: vertical; }
-		button { padding: 9px 13px; border: 1px solid #aeb9ca; border-radius: 8px; background: #fff; cursor: pointer; font: inherit; }
+		textarea { min-height: 88px; resize: vertical; }
+		button { padding: 10px 14px; border: 1px solid #aeb9ca; border-radius: 9px; background: #fff; cursor: pointer; font: inherit; }
 		button:hover { background: #f4f7fb; }
-		.status { display: grid; grid-template-columns: 220px 1fr; gap: 8px 12px; margin: 0; }
+		button.primary { background: #1859d9; color: #fff; border-color: #1859d9; font-weight: 750; }
+		button.primary:hover { background: #1249b8; }
+		button.danger { border-color: #d4a0a0; }
+		.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+		.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+		.result { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #f6f8fb; font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; }
+		.status { display: grid; grid-template-columns: 210px 1fr; gap: 7px 12px; margin: 0; }
 		.status dt { font-weight: 700; color: #4c596d; }
 		.status dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
-		.ok { color: #157347; font-weight: 700; }
-		.warn { color: #a15c00; font-weight: 700; }
-		.log { height: 330px; overflow: auto; background: #0d1420; color: #d7e3f6; border-radius: 10px; padding: 12px; white-space: pre-wrap; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
-		.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-		.native-help { position: fixed; right: 48px; bottom: 192px; width: 44px; height: 44px; border-radius: 22px; background: #3369ff; color: white; display: grid; place-items: center; z-index: 3800; user-select: none; cursor: pointer; box-shadow: 2px 8px 15px rgba(51,105,255,.2); font-weight: 800; }
-		.native-help-popup { position: fixed; right: 48px; bottom: 244px; width: 280px; min-height: 130px; padding: 16px; background: white; border: 1px solid #dbe2ec; border-radius: 12px; box-shadow: 2px 8px 15px rgba(0,0,0,.1); z-index: 3800; display: none; }
+		.report { min-height: 320px; font-size: 12px; line-height: 1.45; }
+		.log { max-height: 240px; overflow: auto; background: #0d1420; color: #d7e3f6; border-radius: 10px; padding: 12px; white-space: pre-wrap; font: 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+		.native-help { position: fixed; right: 48px; bottom: 192px; width: 44px; height: 44px; border-radius: 22px; background: #3369ff; color: #fff; display: grid; place-items: center; z-index: 3800; user-select: none; cursor: pointer; box-shadow: 2px 8px 15px rgba(51,105,255,.2); font-weight: 850; }
+		.native-help-popup { position: fixed; right: 48px; bottom: 244px; width: 290px; padding: 15px; background: #fff; border: 1px solid #dbe2ec; border-radius: 12px; box-shadow: 2px 8px 15px rgba(0,0,0,.1); z-index: 3800; display: none; }
 		.native-help-popup.open { display: block; }
-		.native-help-popup strong { display: block; margin-bottom: 8px; }
-		.small { color: #6a7588; font-size: 13px; line-height: 1.55; }
-		@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .full { grid-column: auto; } .status { grid-template-columns: 1fr; } }
+		.small { color: #68758a; font-size: 13px; }
+		@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } .card.full { grid-column: auto; } .status { grid-template-columns: 1fr; } }
 	</style>
 </head>
 <body>
 	<main>
-		<h1>PsySquid In-page UI Document Footprint Probe</h1>
-		<p class="lead">这个页面站在“普通网站脚本”的视角，观察点击 PsySquid Launcher / Panel 时，document 焦点、事件传播、Shadow DOM retargeting 和 DOM mutation。它只用于兼容性审计。</p>
+		<h1>PsySquid 网页交互足迹 — 引导式人工测试</h1>
+		<p class="lead">不用打开 DevTools。按下面 5 个步骤操作即可；页面会站在普通网站 JavaScript 的视角，自动记录焦点、事件传播和 DOM 注入。最后点击“复制最终报告”，把整段文本原样发给远端 AI。</p>
+		<div class="notice"><strong>测试目的：</strong>确认 PsySquid 的正常网页交互足迹和 P1 自动抢焦点修复。此页用于兼容性审计，不用于规避或绕过网站安全机制。</div>
 
 		<section class="grid">
-			<div class="card">
-				<h2>网页原生焦点目标</h2>
-				<label for="page-input">Page Input</label>
-				<input id="page-input" autocomplete="off" placeholder="先点击这里，再点击原生 FAQ-like 或 PsySquid Launcher" />
-				<label for="page-textarea">Page Textarea</label>
-				<textarea id="page-textarea" placeholder="用于观察 focusout / activeElement 变化"></textarea>
-				<p class="small">注意：用户主动点击另一个可聚焦控件导致 Page Input blur 是正常浏览器行为；本页重点区分“主动点击造成的焦点变化”和“UI 出现/任务结束后额外发生的自动 focus”。</p>
+			<div class="card full">
+				<h2>准备区</h2>
+				<label for="page-input">网页原生输入框</label>
+				<input id="page-input" autocomplete="off" placeholder="测试时按步骤输入文字" />
+				<label for="page-textarea">网页原生 Textarea（备用）</label>
+				<textarea id="page-textarea" placeholder="可用于补充观察"></textarea>
+			</div>
+
+			<div id="step1" class="card step">
+				<h2>步骤 1　原生 FAQ-like 基准 <span class="badge">待完成</span></h2>
+				<p>① 点击上面的“网页原生输入框”，输入 <span class="mono">NATIVE-BASELINE</span>。</p>
+				<p>② 再点击页面右侧中部的蓝色 <strong>?</strong> 按钮。</p>
+				<p>页面会自动记录：document 是否失焦、activeElement、页面是否捕获到点击。</p>
+				<div id="step1-result" class="result">等待操作…</div>
+			</div>
+
+			<div id="step2" class="card step">
+				<h2>步骤 2　PsySquid Launcher <span class="badge">待完成</span></h2>
+				<p>① 再次点击“网页原生输入框”，输入 <span class="mono">LAUNCHER-BASELINE</span>。</p>
+				<p>② 点击右下角 PsySquid Launcher。</p>
+				<p>③ 什么都不要点，等 1 秒。本页会自动判断 Launcher 点击后是否又发生了“第二次自动跳到 Panel 输入框”。</p>
+				<div id="step2-result" class="result">等待操作…</div>
+			</div>
+
+			<div id="step3" class="card step">
+				<h2>步骤 3　主动点击 Panel 输入框 <span class="badge">待完成</span></h2>
+				<p>Panel 已打开后，<strong>用鼠标主动点击一次 PsySquid Panel 的输入框</strong>，输入任意文字（例如 <span class="mono">PANEL-EXPLICIT</span>）。</p>
+				<p>这是正常的用户主动 focus；页面会确认它不是“自动抢焦点”。</p>
+				<div id="step3-result" class="result">等待操作…</div>
+			</div>
+
+			<div id="step4" class="card step">
+				<h2>步骤 4　Agent 完成后的自动 focus 检查 <span class="badge">待完成</span></h2>
+				<p>① 点击下面“复制测试任务”。</p>
+				<p>② 点击 PsySquid Panel 输入框，粘贴后按 Enter。</p>
+				<p>③ <strong>之后不要再点击网页或 Panel</strong>，只等 Agent 自己完成，再多等 1 秒。</p>
+				<div class="controls"><button id="copy-task" type="button">复制测试任务</button></div>
+				<div class="result mono" id="task-text">等待3秒，然后告诉我当前页面标题，不要点击或输入网页元素。</div>
+				<div id="step4-result" class="result">尚未检测到从 Panel 提交任务。</div>
+			</div>
+
+			<div id="step5" class="card step">
+				<h2>步骤 5　网页是否能观察 UI 生命周期 <span class="badge">待完成</span></h2>
+				<p>① 打开 Chrome 的 PsySquid Side Panel。</p>
+				<p>② 把“当前网站显示 PsySquid Web”关闭，等 Launcher 消失。</p>
+				<p>③ 再把它开启，等 Launcher 恢复。</p>
+				<p>页面会自动记录普通 MutationObserver 是否看到了 Launcher/Panel 的移除和重新加入。</p>
+				<div id="step5-result" class="result">等待 OFF → ON…</div>
 			</div>
 
 			<div class="card">
-				<h2>实时 document 视角</h2>
+				<h2>实时摘要（无需理解）</h2>
 				<dl class="status">
 					<dt>document.hasFocus()</dt><dd id="has-focus">-</dd>
-					<dt>document.activeElement</dt><dd id="active-element">-</dd>
+					<dt>activeElement</dt><dd id="active-element">-</dd>
 					<dt>Launcher host</dt><dd id="launcher-host">-</dd>
-					<dt>Launcher shadow active</dt><dd id="launcher-shadow-active">-</dd>
+					<dt>Launcher shadowRoot</dt><dd id="launcher-shadow">-</dd>
 					<dt>Panel present</dt><dd id="panel-present">-</dd>
-					<dt>Last captured event</dt><dd id="last-event">-</dd>
-					<dt>PsySquid mutation count</dt><dd id="mutation-count">0</dd>
-					<dt>Window blur count</dt><dd id="window-blur-count">0</dd>
+					<dt>自动 Panel focus 次数</dt><dd id="auto-panel-focus">0</dd>
+					<dt>window blur 次数</dt><dd id="window-blur">0</dd>
 				</dl>
 			</div>
 
-			<div class="card full">
-				<h2>页面侧事件 / DOM 观察日志</h2>
+			<div class="card">
+				<h2>最后一步：生成并复制报告</h2>
+				<p>前面做完后，点击下面按钮。无需整理内容，直接把复制出来的整段发给远端 AI。</p>
 				<div class="controls">
-					<button id="clear-log" type="button">清空日志</button>
-					<button id="snapshot" type="button">记录当前快照</button>
-					<button id="export-report" type="button">生成报告文本</button>
+					<button id="generate-report" class="primary" type="button">生成最终报告</button>
+					<button id="copy-report" class="primary" type="button">复制最终报告</button>
+					<button id="reset" class="danger" type="button">重置测试数据</button>
 				</div>
-				<div id="log" class="log" aria-live="polite"></div>
-				<label for="report">报告文本</label>
-				<textarea id="report" readonly></textarea>
+				<label for="report">最终报告文本</label>
+				<textarea id="report" class="report" readonly placeholder="点击“生成最终报告”后会出现在这里"></textarea>
+				<div id="copy-status" class="small"></div>
+			</div>
+
+			<div class="card full">
+				<h2>详细事件日志（用户无需阅读）</h2>
+				<div id="log" class="log"></div>
 			</div>
 		</section>
 	</main>
 
-	<div id="native-help" class="native-help">?</div>
-	<div id="native-help-popup" class="native-help-popup">
-		<strong>Native FAQ-like baseline</strong>
-		<div class="small">这是页面自身创建的普通非 Shadow DOM 浮窗，用来对比 document capture listener 能看到什么。它不是 PsySquid。</div>
-	</div>
+	<div id="native-help" class="native-help" title="Native FAQ-like baseline">?</div>
+	<div id="native-help-popup" class="native-help-popup"><strong>Native FAQ-like baseline</strong><p class="small">这是测试页自身创建的普通网页悬浮组件，用于和 PsySquid 的 document-side footprint 做基准对照。</p></div>
 
 	<script>
 		(() => {
-			const logEl = document.getElementById('log')
-			const reportEl = document.getElementById('report')
-			const lastEventEl = document.getElementById('last-event')
-			const mutationCountEl = document.getElementById('mutation-count')
-			const windowBlurCountEl = document.getElementById('window-blur-count')
-			let mutationCount = 0
-			let windowBlurCount = 0
+			const $ = (id) => document.getElementById(id)
 			const records = []
+			const state = {
+				windowBlurCount: 0,
+				automaticPanelFocusCount: 0,
+				lastPointerAt: 0,
+				lastPointerWasPsy: false,
+				lastPointerWasPanel: false,
+				lastPointerWasLauncher: false,
+				nativeClicked: false,
+				nativeWindowBlurDelta: null,
+				nativeActiveAfter: null,
+				launcherClicked: false,
+				launcherWindowBlurDelta: null,
+				launcherImmediateActive: null,
+				launcherAfter1000Active: null,
+				launcherShadowActive: null,
+				launcherDocumentClickObserved: false,
+				launcherPathObserved: false,
+				panelClickObserved: false,
+				panelExplicitFocusObserved: false,
+				agentSubmitObserved: false,
+				agentSubmitAt: 0,
+				agentAutomaticFocusAfterSubmit: 0,
+				launcherHostQueryable: false,
+				launcherShadowReadable: false,
+				sawLauncherRemoval: false,
+				sawLauncherAdditionAfterRemoval: false,
+				sawPanelRemoval: false,
+			}
 
-			const now = () => new Date().toISOString().slice(11, 23)
-			const truncate = (value, max = 180) => value.length > max ? value.slice(0, max) + '…' : value
-
+			function now() { return new Date().toISOString().slice(11, 23) }
 			function describeNode(node) {
 				if (!node) return 'null'
 				if (node === window) return 'window'
 				if (node === document) return 'document'
 				if (node instanceof ShadowRoot) return '#shadow-root(' + node.mode + ')'
 				if (!(node instanceof Element)) return node.nodeName || String(node)
-				let value = node.tagName.toLowerCase()
-				if (node.id) value += '#' + node.id
-				if (node.classList && node.classList.length) value += '.' + [...node.classList].slice(0, 3).join('.')
-				return value
+				let out = node.tagName.toLowerCase()
+				if (node.id) out += '#' + node.id
+				if (node.classList?.length) out += '.' + [...node.classList].slice(0, 2).join('.')
+				return out
 			}
-
-			function isPsySquidPath(path) {
-				return path.some((node) => node instanceof Element && (
-					node.id === 'page-agent-inpage-launcher' ||
-					node.id === 'page-agent-runtime_agent-panel' ||
-					node.closest?.('#page-agent-runtime_agent-panel') ||
-					node.closest?.('#page-agent-inpage-launcher')
-				))
-			}
-
-			function addRecord(kind, detail, emphasized = false) {
+			function isPanelNode(node) { return node instanceof Element && (node.id === 'page-agent-runtime_agent-panel' || Boolean(node.closest?.('#page-agent-runtime_agent-panel'))) }
+			function isLauncherNode(node) { return node instanceof Element && (node.id === 'page-agent-inpage-launcher' || Boolean(node.closest?.('#page-agent-inpage-launcher'))) }
+			function pathHas(path, predicate) { return path.some(predicate) }
+			function panelInput() { return document.querySelector('#page-agent-runtime_agent-panel input') }
+			function log(kind, detail) {
 				const line = `[${now()}] ${kind} ${detail}`
 				records.push(line)
-				if (records.length > 400) records.shift()
+				if (records.length > 500) records.shift()
 				const row = document.createElement('div')
 				row.textContent = line
-				if (emphasized) row.style.color = '#7dd3fc'
-				logEl.appendChild(row)
-				logEl.scrollTop = logEl.scrollHeight
+				$('log').appendChild(row)
+				$('log').scrollTop = $('log').scrollHeight
 			}
-
-			function activeSnapshot() {
+			function setStep(id, status, text) {
+				const card = $(id)
+				card.classList.remove('pass', 'fail')
+				if (status === 'PASS') card.classList.add('pass')
+				if (status === 'FAIL') card.classList.add('fail')
+				card.querySelector('.badge').textContent = status === 'WAIT' ? '待完成' : status
+				$(id + '-result').textContent = text
+			}
+			function snapshot() {
 				const launcher = document.getElementById('page-agent-inpage-launcher')
-				const shadowActive = launcher?.shadowRoot?.activeElement ?? null
+				state.launcherHostQueryable = Boolean(launcher)
+				state.launcherShadowReadable = Boolean(launcher?.shadowRoot)
 				return {
 					hasFocus: document.hasFocus(),
 					activeElement: describeNode(document.activeElement),
 					launcherPresent: Boolean(launcher),
 					launcherShadowMode: launcher?.shadowRoot?.mode ?? null,
-					launcherShadowActive: describeNode(shadowActive),
+					launcherShadowActive: describeNode(launcher?.shadowRoot?.activeElement ?? null),
 					panelPresent: Boolean(document.getElementById('page-agent-runtime_agent-panel')),
-					mutationCount,
-					windowBlurCount,
 				}
 			}
-
-			function renderStatus() {
-				const s = activeSnapshot()
-				document.getElementById('has-focus').textContent = String(s.hasFocus)
-				document.getElementById('has-focus').className = s.hasFocus ? 'ok' : 'warn'
-				document.getElementById('active-element').textContent = s.activeElement
-				document.getElementById('launcher-host').textContent = s.launcherPresent ? `present; shadow=${s.launcherShadowMode || 'none'}` : 'absent'
-				document.getElementById('launcher-shadow-active').textContent = s.launcherShadowActive
-				document.getElementById('panel-present').textContent = String(s.panelPresent)
-				mutationCountEl.textContent = String(mutationCount)
-				windowBlurCountEl.textContent = String(windowBlurCount)
+			function render() {
+				const s = snapshot()
+				$('has-focus').textContent = String(s.hasFocus)
+				$('active-element').textContent = s.activeElement
+				$('launcher-host').textContent = s.launcherPresent ? 'present' : 'absent'
+				$('launcher-shadow').textContent = s.launcherShadowMode ? `readable (${s.launcherShadowMode})` : 'none / absent'
+				$('panel-present').textContent = String(s.panelPresent)
+				$('auto-panel-focus').textContent = String(state.automaticPanelFocusCount)
+				$('window-blur').textContent = String(state.windowBlurCount)
 			}
 
-			for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click', 'focusin', 'focusout']) {
-				document.addEventListener(type, (event) => {
-					const path = event.composedPath()
-					const psy = isPsySquidPath(path)
-					const pathText = path.slice(0, 8).map(describeNode).join(' > ')
-					const detail = `target=${describeNode(event.target)} active=${describeNode(document.activeElement)} psy=${psy} path=${truncate(pathText)}`
-					lastEventEl.textContent = `${type}: ${describeNode(event.target)}; psy=${psy}`
-					addRecord(type.toUpperCase(), detail, psy)
-					queueMicrotask(renderStatus)
-				}, true)
-			}
+			window.addEventListener('blur', () => { state.windowBlurCount += 1; log('WINDOW', 'blur'); render() })
+			window.addEventListener('focus', () => { log('WINDOW', 'focus'); render() })
 
-			window.addEventListener('focus', () => addRecord('WINDOW', 'focus'))
-			window.addEventListener('blur', () => {
-				windowBlurCount += 1
-				addRecord('WINDOW', 'blur', true)
-				renderStatus()
+			document.addEventListener('pointerdown', (event) => {
+				const path = event.composedPath()
+				state.lastPointerAt = Date.now()
+				state.lastPointerWasPanel = pathHas(path, isPanelNode)
+				state.lastPointerWasLauncher = pathHas(path, isLauncherNode)
+				state.lastPointerWasPsy = state.lastPointerWasPanel || state.lastPointerWasLauncher
+				log('POINTERDOWN', `target=${describeNode(event.target)} panel=${state.lastPointerWasPanel} launcher=${state.lastPointerWasLauncher}`)
+			}, true)
+
+			document.addEventListener('click', (event) => {
+				const path = event.composedPath()
+				const launcher = pathHas(path, isLauncherNode)
+				const panel = pathHas(path, isPanelNode)
+				if (launcher) {
+					state.launcherDocumentClickObserved = true
+					state.launcherPathObserved = path.some((node) => isLauncherNode(node))
+					if (!state.launcherClicked) {
+						state.launcherClicked = true
+						const before = state.windowBlurCount
+						queueMicrotask(() => {
+							state.launcherImmediateActive = describeNode(document.activeElement)
+							const host = document.getElementById('page-agent-inpage-launcher')
+							state.launcherShadowActive = describeNode(host?.shadowRoot?.activeElement ?? null)
+						})
+						setTimeout(() => {
+							state.launcherWindowBlurDelta = state.windowBlurCount - before
+							state.launcherAfter1000Active = describeNode(document.activeElement)
+							const autoToPanel = panelInput() === document.activeElement
+							setStep('step2', autoToPanel ? 'FAIL' : 'PASS', [
+								`document.hasFocus=${document.hasFocus()}`,
+								`window blur delta=${state.launcherWindowBlurDelta}`,
+								`immediate active=${state.launcherImmediateActive}`,
+								`after 1000ms active=${state.launcherAfter1000Active}`,
+								`shadow active=${state.launcherShadowActive}`,
+								`automatic jump to Panel input=${autoToPanel}`,
+							].join('\n'))
+							render()
+						}, 1000)
+					}
+				}
+				if (panel) state.panelClickObserved = true
+				log('CLICK', `target=${describeNode(event.target)} launcher=${launcher} panel=${panel}`)
+			}, true)
+
+			document.addEventListener('focusin', (event) => {
+				const path = event.composedPath()
+				const onPanel = pathHas(path, isPanelNode)
+				const onPanelInput = event.target === panelInput()
+				const explicitRecentPointer = Date.now() - state.lastPointerAt < 1000 && state.lastPointerWasPanel
+				if (onPanelInput) {
+					if (explicitRecentPointer) {
+						state.panelExplicitFocusObserved = true
+						setStep('step3', 'PASS', `Panel input focus followed an explicit pointer action.\nactive=${describeNode(document.activeElement)}`)
+					} else {
+						state.automaticPanelFocusCount += 1
+						if (state.agentSubmitObserved && Date.now() > state.agentSubmitAt + 200) state.agentAutomaticFocusAfterSubmit += 1
+						log('AUTO_PANEL_FOCUS', `target=${describeNode(event.target)} count=${state.automaticPanelFocusCount}`)
+					}
+				}
+				log('FOCUSIN', `target=${describeNode(event.target)} panel=${onPanel} explicitPointer=${explicitRecentPointer}`)
+				render()
+			}, true)
+
+			document.addEventListener('focusout', (event) => log('FOCUSOUT', `target=${describeNode(event.target)}`), true)
+
+			document.addEventListener('keydown', (event) => {
+				if (event.key !== 'Enter') return
+				if (event.target !== panelInput()) return
+				state.agentSubmitObserved = true
+				state.agentSubmitAt = Date.now()
+				state.agentAutomaticFocusAfterSubmit = 0
+				setStep('step4', 'WAIT', '已检测到 Panel Enter 提交。现在不要再点击，等待 Agent 完成并多等 1 秒。')
+				log('AGENT_SUBMIT', 'Enter pressed in Panel input; post-completion auto-focus watch armed')
+				setTimeout(() => {
+					const fail = state.agentAutomaticFocusAfterSubmit > 0
+					setStep('step4', fail ? 'FAIL' : 'PASS', `提交后检测到非鼠标触发的 Panel input focus 次数=${state.agentAutomaticFocusAfterSubmit}\n（请确保 Agent 已经完成后再以此结果为准）`)
+				}, 7000)
+			}, true)
+
+			const native = $('native-help')
+			native.addEventListener('click', () => {
+				$('native-help-popup').classList.toggle('open')
+				if (!state.nativeClicked) {
+					state.nativeClicked = true
+					const before = state.windowBlurCount
+					setTimeout(() => {
+						state.nativeWindowBlurDelta = state.windowBlurCount - before
+						state.nativeActiveAfter = describeNode(document.activeElement)
+						setStep('step1', 'PASS', `document.hasFocus=${document.hasFocus()}\nwindow blur delta=${state.nativeWindowBlurDelta}\nactive after click=${state.nativeActiveAfter}\ndocument click observed=true`)
+					}, 300)
+				}
 			})
-			document.addEventListener('visibilitychange', () => addRecord('DOCUMENT', `visibility=${document.visibilityState}`))
 
 			const observer = new MutationObserver((mutations) => {
 				for (const mutation of mutations) {
-					if (mutation.type === 'childList') {
-						for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
-							if (!(node instanceof Element)) continue
-							const root = node.matches?.('#page-agent-inpage-launcher, #page-agent-runtime_agent-panel')
-								? node
-								: node.querySelector?.('#page-agent-inpage-launcher, #page-agent-runtime_agent-panel')
-							if (!root) continue
-							mutationCount += 1
-							const action = [...mutation.addedNodes].includes(node) ? 'added' : 'removed'
-							addRecord('MUTATION', `${action} ${describeNode(root)} parent=${describeNode(mutation.target)}`, true)
+					if (mutation.type !== 'childList') continue
+					for (const node of mutation.removedNodes) {
+						if (!(node instanceof Element)) continue
+						if (node.id === 'page-agent-inpage-launcher' || node.querySelector?.('#page-agent-inpage-launcher')) {
+							state.sawLauncherRemoval = true
+							log('MUTATION', 'Launcher removed (observable by page MutationObserver)')
+						}
+						if (node.id === 'page-agent-runtime_agent-panel' || node.querySelector?.('#page-agent-runtime_agent-panel')) {
+							state.sawPanelRemoval = true
+							log('MUTATION', 'Panel removed (observable by page MutationObserver)')
 						}
 					}
-					if (mutation.type === 'attributes' && mutation.target instanceof Element) {
-						const target = mutation.target
-						if (target.id === 'page-agent-inpage-launcher' || target.id === 'page-agent-runtime_agent-panel') {
-							mutationCount += 1
-							addRecord('MUTATION', `attribute ${mutation.attributeName} on ${describeNode(target)}`, true)
+					for (const node of mutation.addedNodes) {
+						if (!(node instanceof Element)) continue
+						if ((node.id === 'page-agent-inpage-launcher' || node.querySelector?.('#page-agent-inpage-launcher')) && state.sawLauncherRemoval) {
+							state.sawLauncherAdditionAfterRemoval = true
+							log('MUTATION', 'Launcher added after removal (observable by page MutationObserver)')
 						}
 					}
 				}
-				renderStatus()
-			})
-			observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true })
-
-			document.getElementById('native-help').addEventListener('click', () => {
-				document.getElementById('native-help-popup').classList.toggle('open')
-			})
-			document.getElementById('clear-log').addEventListener('click', () => {
-				records.length = 0
-				logEl.replaceChildren()
-			})
-			document.getElementById('snapshot').addEventListener('click', () => {
-				addRecord('SNAPSHOT', JSON.stringify(activeSnapshot()), true)
-			})
-			document.getElementById('export-report').addEventListener('click', () => {
-				const report = {
-					timestamp: new Date().toISOString(),
-					snapshot: activeSnapshot(),
-					launcherOuterHTML: document.getElementById('page-agent-inpage-launcher')?.outerHTML ?? null,
-					panelOuterHTMLPrefix: document.getElementById('page-agent-runtime_agent-panel')?.outerHTML.slice(0, 1200) ?? null,
-					recentRecords: records.slice(-120),
+				if (state.sawLauncherRemoval && state.sawLauncherAdditionAfterRemoval) {
+					setStep('step5', 'PASS', `MutationObserver saw Launcher removal=${state.sawLauncherRemoval}\nMutationObserver saw Launcher re-addition=${state.sawLauncherAdditionAfterRemoval}\nPanel removal observed=${state.sawPanelRemoval}`)
 				}
-				reportEl.value = JSON.stringify(report, null, 2)
+				render()
+			})
+			observer.observe(document.documentElement, { childList: true, subtree: true })
+
+			$('copy-task').addEventListener('click', async () => {
+				const text = $('task-text').textContent
+				try { await navigator.clipboard.writeText(text); $('copy-task').textContent = '已复制测试任务' }
+				catch { $('copy-task').textContent = '复制失败，请手动选中文本复制' }
 			})
 
-			setInterval(renderStatus, 150)
-			renderStatus()
-			addRecord('READY', 'document-side probe started')
+			function reportText() {
+				const s = snapshot()
+				return [
+					'=== PsySquid In-page UI Footprint Guided Test ===',
+					`timestamp: ${new Date().toISOString()}`,
+					'',
+					'[STEP 1 Native FAQ-like baseline]',
+					`native clicked: ${state.nativeClicked}`,
+					`document hasFocus: ${document.hasFocus()}`,
+					`window blur delta: ${state.nativeWindowBlurDelta}`,
+					`active after click: ${state.nativeActiveAfter}`,
+					'',
+					'[STEP 2 PsySquid Launcher]',
+					`launcher clicked: ${state.launcherClicked}`,
+					`document captured launcher click: ${state.launcherDocumentClickObserved}`,
+					`composedPath contained launcher: ${state.launcherPathObserved}`,
+					`window blur delta: ${state.launcherWindowBlurDelta}`,
+					`immediate activeElement: ${state.launcherImmediateActive}`,
+					`after 1000ms activeElement: ${state.launcherAfter1000Active}`,
+					`launcher shadow activeElement: ${state.launcherShadowActive}`,
+					'',
+					'[STEP 3 Panel explicit focus]',
+					`document captured Panel click: ${state.panelClickObserved}`,
+					`explicit Panel input focus observed: ${state.panelExplicitFocusObserved}`,
+					`all non-pointer Panel input focus count: ${state.automaticPanelFocusCount}`,
+					'',
+					'[STEP 4 Agent completion focus]',
+					`Panel Enter submit observed: ${state.agentSubmitObserved}`,
+					`non-pointer Panel input focus after submit: ${state.agentAutomaticFocusAfterSubmit}`,
+					'',
+					'[STEP 5 DOM observability]',
+					`Launcher host queryable by page JS: ${state.launcherHostQueryable}`,
+					`Launcher shadowRoot readable by page JS: ${state.launcherShadowReadable}`,
+					`MutationObserver saw Launcher removal: ${state.sawLauncherRemoval}`,
+					`MutationObserver saw Launcher re-addition: ${state.sawLauncherAdditionAfterRemoval}`,
+					`MutationObserver saw Panel removal: ${state.sawPanelRemoval}`,
+					'',
+					'[CURRENT SNAPSHOT]',
+					JSON.stringify(s),
+					'',
+					'[RECENT EVENT LOG]',
+					...records.slice(-100),
+				].join('\n')
+			}
+
+			$('generate-report').addEventListener('click', () => { $('report').value = reportText(); $('copy-status').textContent = '报告已生成。现在点击“复制最终报告”。' })
+			$('copy-report').addEventListener('click', async () => {
+				$('report').value = reportText()
+				try { await navigator.clipboard.writeText($('report').value); $('copy-status').textContent = '已复制。直接回到聊天，把整段粘贴发送即可。' }
+				catch { $('report').focus(); $('report').select(); $('copy-status').textContent = '浏览器禁止自动复制：报告已全选，请按 Ctrl+C，然后粘贴给远端 AI。' }
+			})
+			$('reset').addEventListener('click', () => location.reload())
+
+			setInterval(render, 150)
+			render()
+			log('READY', 'guided document-side probe started')
 		})()
 	</script>
 </body>
