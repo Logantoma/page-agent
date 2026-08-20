@@ -30,16 +30,15 @@ describe('InPageLauncher document footprint', () => {
 		const onClick = vi.fn()
 		const launcher = new InPageLauncher({ onClick })
 		const button = launcher.element.shadowRoot?.querySelector<HTMLButtonElement>('button')
-		let capturedEvent: Event | null = null
-		const capture = (event: Event) => {
-			capturedEvent = event
-		}
+		const capture = vi.fn<(event: Event) => void>()
 		document.addEventListener('click', capture, true)
 
 		button?.click()
 
 		expect(onClick).toHaveBeenCalledOnce()
-		expect(capturedEvent).not.toBeNull()
+		expect(capture).toHaveBeenCalledOnce()
+		const capturedEvent = capture.mock.calls[0]?.[0]
+		expect(capturedEvent).toBeDefined()
 		expect(capturedEvent?.composedPath()).toContain(launcher.element)
 
 		document.removeEventListener('click', capture, true)
