@@ -126,6 +126,7 @@ B4.6 已完成 tab-global index namespace、frame routing 和动作反馈回写�
 | Hardening | `7b37f2684cf34e9fa83e7190866576be4f0d7a83` | lifecycle hardening |
 | Release | `b0df39b13d00e1f3b61e5e5f995a9212c3dd43b2` | extension 0.1.0 |
 | Post-0.1.0 P1 | `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` | in-page Panel focus hardening |
+| P1 regression coverage | `a926d75dddca45d955bd40c3dd83557e0ded0886` | Launcher document-footprint automated coverage |
 
 ---
 
@@ -152,7 +153,7 @@ launcher.setWorking(false)
 
 避免 Launcher 假 active 状态。
 
-### Post-0.1.0：Panel focus hardening
+### Post-0.1.0：Panel focus hardening（CLOSED）
 
 `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 已将 Panel 自动 focus 行为配置化：
 
@@ -166,9 +167,13 @@ upstream Panel 默认仍为 `true`；PsySquid `InPageAgentShell` 显式传 `auto
 
 验证状态：
 
-- REMOTE-CONFIRMED：实现和 diff 已复核，main 已 fast-forward 到该 commit。
-- LOCAL-AI-REPORTED：焦点专项 `2/2 PASS`、typecheck PASS、root tests `174/174 PASS`、extension `105/105 PASS`、build:ext PASS、diff check PASS。
-- USER-MANUAL-VERIFIED：真实浏览器 focus 行为仍待部署前最终确认。
+- REMOTE-CONFIRMED：实现和 diff 已复核；focus hardening 已进入 `main`；`a926d75dddca45d955bd40c3dd83557e0ded0886` 的 document-footprint 回归测试也已 fast-forward 进入 `main`。
+- LOCAL-AI-REPORTED：document footprint `3/3 PASS`、Panel focus `2/2 PASS`、Launcher regression `3/3 PASS`、Shell regression `9/9 PASS`、typecheck PASS、root tests `177/177 PASS`、extension `108/108 PASS`、build:ext PASS、diff check PASS。
+- 自动化 DOM 集成测试确认：页面 document 可查询 Launcher host；ShadowRoot 为 `open`；document capture listener 可观察 Launcher click path；MutationObserver 可观察 Launcher 插入/移除。
+- `Panel.focus.test.ts` 确认 upstream 默认 auto-focus 保留，同时 `autoFocusInput:false` 时网页焦点保持不被自动迁移到 Panel input。
+- USER-MANUAL-VERIFIED：本轮未完成真实 Chrome 人工 focus/footprint gate；因此不得把上述 happy-dom/Vitest 结果扩张为“特定站点检测逻辑、Chrome isolated-world 细节或防御系统已实机验证”。
+
+工程结论：P1 focus hardening 已关闭。后续若真实 Chrome/特定站点出现新的焦点或兼容性问题，应作为独立 runtime bug 处理，不重复开发本轮 `autoFocusInput` 补丁。
 
 ---
 
@@ -203,6 +208,21 @@ build:ext: PASS
 git diff --check: PASS
 ```
 
+Post-0.1.0 P1 / document-footprint 收口时 LOCAL-AI-REPORTED：
+
+```text
+document footprint: 3/3 PASS
+Panel focus: 2/2 PASS
+Launcher regression: 3/3 PASS
+Shell regression: 9/9 PASS
+typecheck: PASS
+npm test: 177/177 PASS
+extension tests: 108/108 PASS
+build:ext: PASS
+git diff --check: PASS
+working tree: clean
+```
+
 USER-MANUAL-VERIFIED：
 
 - B4.6 iframe PASS
@@ -212,7 +232,7 @@ USER-MANUAL-VERIFIED：
 - hardening rapid toggle / Panel close PASS
 - 0.1.0 release ZIP runtime PASS
 
-Post-0.1.0 focus hardening 的真实浏览器 focus gate 尚未标记为 USER-MANUAL-VERIFIED。
+Post-0.1.0 focus/document-footprint 本轮没有新增 USER-MANUAL-VERIFIED；其工程关闭依据是上述自动化专项与完整回归，不应描述为真实 Chrome 特定站点实机验证。
 
 ---
 
@@ -252,9 +272,11 @@ host_permissions: <all_urls>
 
 ## 10. 已知延期项
 
-### P1（已修复，人工 runtime gate 待确认）
+### P1（CLOSED）
 
-Panel 自动 focus 已通过 `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 修复并进入 `main`。不要重复开发；部署前只需补真实浏览器 focus 验证。
+Panel 自动 focus 已通过 `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 修复并进入 `main`；自动化 document-footprint / focus 回归也已进入 `main`。不要重复开发。
+
+真实 Chrome 特定站点若后续出现新的 focus、DOM coexistence 或事件行为问题，应单独记录为 runtime compatibility bug；当前结论不包含反检测、规避监控或站点安全机制验证。
 
 ### P2
 
@@ -290,7 +312,7 @@ Panel 自动 focus 已通过 `59e336e6d29c8ea83c5a1e5582afc5cef6609b86` 修复�
    - extension tests
    - `npm run build:ext`
    - `git diff --check`
-10. 浏览器行为必须做 USER-MANUAL-VERIFIED
+10. 浏览器特有行为如果是发布门禁或无法由自动化覆盖，必须做 USER-MANUAL-VERIFIED；已被稳定自动化覆盖的纯 DOM/逻辑行为不得机械要求重复人工操作
 11. push 后远端 compare/diff review
 12. 只能 fast-forward main
 13. 禁止 force push / 改写历史
